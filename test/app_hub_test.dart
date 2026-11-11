@@ -904,6 +904,7 @@ void main() {
       );
       try {
         await hub.ensureLoaded();
+        await hub.repo.save();
         expect(hub.repo.geminiApiKey, 'AIzaLegacyKey99');
         expect(platform.secrets['gemini_api_key'], 'AIzaLegacyKey99');
         expect(
@@ -914,54 +915,59 @@ void main() {
         hub.dispose();
       }
 
-      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-      try {
-        Uri? capturedUri;
-        String? capturedHeaderKey;
-        server.listen((req) async {
-          capturedUri = req.requestedUri;
-          capturedHeaderKey = req.headers.value('x-goog-api-key');
-          req.response.statusCode = 200;
-          req.response.headers.contentType = ContentType.json;
-          req.response.write(
-            jsonEncode({
-              'candidates': [
-                {
-                  'content': {
-                    'parts': [
-                      {
-                        'text': jsonEncode({
-                          'summary': 'Try Snapseed',
-                          'search_query': 'photo editor',
-                          'packages': ['com.niksoftware.snapseed'],
-                        }),
-                      },
-                    ],
+      await HttpOverrides.runWithHttpOverrides(() async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        try {
+          Uri? capturedUri;
+          String? capturedHeaderKey;
+          server.listen((req) async {
+            capturedUri = req.requestedUri;
+            capturedHeaderKey = req.headers.value('x-goog-api-key');
+            await req.drain<void>();
+            req.response.statusCode = 200;
+            req.response.headers.contentType = ContentType.json;
+            req.response.write(
+              jsonEncode({
+                'candidates': [
+                  {
+                    'content': {
+                      'parts': [
+                        {
+                          'text': jsonEncode({
+                            'summary': 'Try Snapseed',
+                            'search_query': 'photo editor',
+                            'packages': ['com.niksoftware.snapseed'],
+                          }),
+                        },
+                      ],
+                    },
                   },
-                },
-              ],
-            }),
-          );
-          await req.response.close();
-        });
+                ],
+              }),
+            );
+            await req.response.close();
+          });
 
-        final okIntel = AppIntelligence(
-          stores: _StubStoreAggregator(),
-          geminiEndpoint: Uri.parse('http://127.0.0.1:${server.port}/generate'),
-        );
-        final rec = await okIntel.recommendForNeed(
-          'edit photos',
-          device: const DeviceEnvironment(),
-          fa: false,
-          geminiApiKey: 'AIzaTestSecret123',
-        );
-        expect(rec.usedGemini, isTrue);
-        expect(capturedUri?.queryParameters.containsKey('key'), isFalse);
-        expect(capturedUri.toString(), isNot(contains('AIzaTestSecret123')));
-        expect(capturedHeaderKey, 'AIzaTestSecret123');
-      } finally {
-        await server.close(force: true);
-      }
+          final okIntel = AppIntelligence(
+            stores: _StubStoreAggregator(),
+            geminiEndpoint: Uri.parse(
+              'http://127.0.0.1:${server.port}/generate',
+            ),
+          );
+          final rec = await okIntel.recommendForNeed(
+            'edit photos',
+            device: const DeviceEnvironment(),
+            fa: false,
+            geminiApiKey: 'AIzaTestSecret123',
+          );
+          expect(rec.usedGemini, isTrue);
+          expect(capturedUri?.queryParameters.containsKey('key'), isFalse);
+          expect(capturedUri.toString(), isNot(contains('AIzaTestSecret123')));
+          expect(capturedHeaderKey, 'AIzaTestSecret123');
+        } finally {
+          await server.close(force: true);
+        }
+      }, _RealHttpOverrides());
     } finally {
       if (dir.existsSync()) dir.deleteSync(recursive: true);
     }
@@ -1006,16 +1012,30 @@ void main() {
 
     await hub.setGeminiApiKey('');
     await tester.pumpWidget(
-      _wrap(HubSettingsPage(hub: hub, settings: HubAppSettings())),
+      _wrap(Scaffold(body: HubSettingsPage(hub: hub, settings: HubAppSettings()))),
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byType(TextField).first);
     await tester.enterText(find.byType(TextField).first, 'bad-proxy');
+    await tester.pump();
     final proxySave = find.text('Save').first;
     await tester.ensureVisible(proxySave);
     await tester.tap(proxySave);
     await tester.pump();
-    expect(find.textContaining('host:port'), findsOneWidget);
+    expect(
+      find.text('Enter host:port (port 1\u201365535) or leave empty'),
+      findsOneWidget,
+    );
+    ScaffoldMessenger.maybeOf(
+      tester.element(find.byType(HubSettingsPage)),
+    )?.hideCurrentSnackBar();
+    await tester.pumpAndSettle();
+
+    final proxyDelete = find.text('Delete').first;
+    await tester.ensureVisible(proxyDelete);
+    await tester.tap(proxyDelete);
+    await tester.pumpAndSettle();
+    expect(find.text('Delete'), findsNothing);
 
     await tester.ensureVisible(find.byType(TextField).last);
     expect(find.text('Delete'), findsNothing);
@@ -1134,3 +1154,5 @@ extension on UnifiedAppResult {
       listings.containsKey(StoreId.bazaar) &&
       listings.containsKey(StoreId.myket);
 }
+
+class _RealHttpOverrides extends HttpOverrides {}
