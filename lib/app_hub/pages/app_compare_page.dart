@@ -242,11 +242,13 @@ class _AppComparePageState extends State<AppComparePage> {
     final dark = theme.brightness == Brightness.dark;
     final b = _b;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(s.compareTitle)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+    return IceDragonBackdrop(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: Text(s.compareTitle)),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
           Row(
             children: [
               Expanded(
@@ -354,6 +356,7 @@ class _AppComparePageState extends State<AppComparePage> {
               ),
             ),
         ],
+      ),
       ),
     );
   }

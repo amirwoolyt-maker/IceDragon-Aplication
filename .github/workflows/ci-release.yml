@@ -65,13 +65,19 @@ jobs:
           cache: true
 
       - name: Optional release keystore
+        id: keystore
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE" ] && [ -n "$PASSWORD" ]; then
-            printf '%s' "$KEYSTORE" | base64 -d > android/release.jks
-            printf 'storeFile=../release.jks\nstorePassword=%s\nkeyAlias=release\nkeyPassword=%s\n' "$PASSWORD" "$PASSWORD" > android/key.properties
+            printf '%s' "$KEYSTORE" | tr -d '\r\n ' | base64 -d > android/release.jks
+            keytool -list -keystore android/release.jks -storepass "$PASSWORD" -alias release >/dev/null
+            printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=release\nkeyPassword=%s\n' "$PASSWORD" "$PASSWORD" > android/key.properties
+            echo "mode=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 or ANDROID_KEYSTORE_PASSWORD not set — falling back to debug signing."
+            echo "mode=debug" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build release APKs
@@ -84,6 +90,8 @@ jobs:
           done
           flutter build apk --release
           cp build/app/outputs/flutter-apk/app-release.apk out/IceDragon-AppHub-universal.apk
+          keytool -printcert -jarfile out/IceDragon-AppHub-universal.apk | head -n 12 || true
+          echo "Signing mode: ${{ steps.keystore.outputs.mode }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clean keystore files
         if: always()

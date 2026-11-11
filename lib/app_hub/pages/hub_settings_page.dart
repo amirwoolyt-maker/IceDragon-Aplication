@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import '../../hub_settings.dart';
 import '../../theme/hub_theme.dart';
 import '../hub_controller.dart';
+import '../hub_models.dart';
 import '../hub_strings.dart';
+import 'hub_widgets.dart';
 
 /// Standalone App Hub preferences page (#5, #8, #12, #16 + external VPN options).
 class HubSettingsPage extends StatefulWidget {
@@ -68,8 +70,60 @@ class _HubSettingsPageState extends State<HubSettingsPage> {
         final hub = widget.hub;
         final bypassCount = hub.repo.vpnBypassPackages.length;
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
           children: [
+            GlassCard(
+              dark: dark,
+              accentColor: DarkGlassPalette.cyan,
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [DarkGlassPalette.cyan, DarkGlassPalette.purple],
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.ac_unit_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.appTitle,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          s.appHubTagline,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const IcePillBadge(
+                    text: 'v1.1.0',
+                    color: DarkGlassPalette.cyan,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             GlassCard(
               dark: dark,
               child: Column(
@@ -147,31 +201,21 @@ class _HubSettingsPageState extends State<HubSettingsPage> {
                   if (Platform.isAndroid) ...[
                     const Divider(height: 1),
                     ListTile(
-                      leading: Icon(
-                        hub.device.hasUsageAccess
-                            ? Icons.verified_user_rounded
-                            : Icons.admin_panel_settings_outlined,
-                        color: hub.device.hasUsageAccess
-                            ? DarkGlassPalette.mint
-                            : DarkGlassPalette.amber,
+                      leading: const Icon(
+                        Icons.verified_user_rounded,
+                        color: DarkGlassPalette.mint,
                       ),
-                      title: Text(s.freeStorage),
+                      title: Text(s.zeroPermsTitle),
                       subtitle: Text(
-                        hub.device.hasUsageAccess
-                            ? s.usageAccessGranted
-                            : s.usageAccessMissing,
+                        hub.device.freeStorageBytes > 0
+                            ? '${s.zeroPermsDesc}\n${s.freeStorage}: ${formatStorageBytes(hub.device.freeStorageBytes)}'
+                            : s.zeroPermsDesc,
                       ),
-                      trailing: hub.device.hasUsageAccess
-                          ? const Icon(
-                              Icons.check_circle_outline_rounded,
-                              color: DarkGlassPalette.mint,
-                              size: 20,
-                            )
-                          : TextButton(
-                              onPressed: () =>
-                                  hub.platform.openUsageAccessSettings(),
-                              child: Text(s.grantUsageAccess),
-                            ),
+                      trailing: const Icon(
+                        Icons.check_circle_outline_rounded,
+                        color: DarkGlassPalette.mint,
+                        size: 20,
+                      ),
                     ),
                   ],
                 ],

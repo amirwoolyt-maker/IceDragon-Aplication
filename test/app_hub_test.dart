@@ -524,6 +524,8 @@ void main() {
     await tester.pumpWidget(_wrap(AssistantHubPage(hub: hub)));
     await tester.pumpAndSettle();
     expect(find.text('Phone Doctor'), findsOneWidget);
+    expect(find.text('Zero-permission ready'), findsOneWidget);
+    expect(find.text('Grant access'), findsNothing);
 
     await tester.pumpWidget(
       _wrap(

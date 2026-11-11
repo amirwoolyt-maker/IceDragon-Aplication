@@ -1,7 +1,6 @@
 package com.icedragon.apphub
 
 import android.app.ActivityManager
-import android.app.AppOpsManager
 import android.app.usage.StorageStatsManager
 import android.content.Context
 import android.content.Intent
@@ -119,16 +118,8 @@ class MainActivity : FlutterActivity() {
         ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
     }.getOrNull()
 
-    private fun hasUsageAccess(): Boolean {
-        val appOps = getSystemService(AppOpsManager::class.java) ?: return false
-        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
-        } else {
-            @Suppress("DEPRECATION")
-            appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
-        }
-        return mode == AppOpsManager.MODE_ALLOWED
-    }
+    // Zero-hassle standalone mode: do not force Android Restricted Usage Access.
+    private fun hasUsageAccess(): Boolean = false
 
     private fun deviceInfo(): Map<String, Any> {
         val am = getSystemService(ActivityManager::class.java)

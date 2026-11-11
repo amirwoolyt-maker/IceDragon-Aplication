@@ -54,58 +54,62 @@ class _AssistantHubPageState extends State<AssistantHubPage> {
       listenable: widget.hub,
       builder: (context, _) {
         final hub = widget.hub;
-        return Scaffold(
-          appBar: AppBar(title: Text(s.navAssistant)),
-          body: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SegmentedButton<_AssistantSubTab>(
-                    showSelectedIcon: false,
-                    segments: [
-                      ButtonSegment(
-                        value: _AssistantSubTab.doctor,
-                        label: Text(s.assistantTab),
-                      ),
-                      ButtonSegment(
-                        value: _AssistantSubTab.updates,
-                        label: Text(
-                          hub.availableUpdates.isNotEmpty
-                              ? '${s.updatesTab} (${hub.availableUpdates.length})'
-                              : s.updatesTab,
+        return IceDragonBackdrop(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(title: Text(s.navAssistant)),
+            body: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 6, 14, 8),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SegmentedButton<_AssistantSubTab>(
+                      showSelectedIcon: false,
+                      segments: [
+                        ButtonSegment(
+                          value: _AssistantSubTab.doctor,
+                          label: Text(s.assistantTab),
                         ),
-                      ),
-                      ButtonSegment(
-                        value: _AssistantSubTab.collections,
-                        label: Text(s.collectionsTab),
-                      ),
-                      ButtonSegment(
-                        value: _AssistantSubTab.ai,
-                        label: Text(s.aiTab),
-                      ),
-                    ],
-                    selected: {_subTab},
-                    onSelectionChanged: (v) => setState(() => _subTab = v.first),
+                        ButtonSegment(
+                          value: _AssistantSubTab.updates,
+                          label: Text(
+                            hub.availableUpdates.isNotEmpty
+                                ? '${s.updatesTab} (${hub.availableUpdates.length})'
+                                : s.updatesTab,
+                          ),
+                        ),
+                        ButtonSegment(
+                          value: _AssistantSubTab.collections,
+                          label: Text(s.collectionsTab),
+                        ),
+                        ButtonSegment(
+                          value: _AssistantSubTab.ai,
+                          label: Text(s.aiTab),
+                        ),
+                      ],
+                      selected: {_subTab},
+                      onSelectionChanged: (v) =>
+                          setState(() => _subTab = v.first),
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: switch (_subTab) {
-                  _AssistantSubTab.doctor => _DoctorView(hub: hub, s: s),
-                  _AssistantSubTab.updates => _UpdatesView(hub: hub, s: s),
-                  _AssistantSubTab.collections =>
-                    _CollectionsView(hub: hub, s: s),
-                  _AssistantSubTab.ai => _AiView(
-                    hub: hub,
-                    s: s,
-                    controller: _aiCtrl,
-                    theme: theme,
-                  ),
-                },
-              ),
-            ],
+                Expanded(
+                  child: switch (_subTab) {
+                    _AssistantSubTab.doctor => _DoctorView(hub: hub, s: s),
+                    _AssistantSubTab.updates => _UpdatesView(hub: hub, s: s),
+                    _AssistantSubTab.collections =>
+                      _CollectionsView(hub: hub, s: s),
+                    _AssistantSubTab.ai => _AiView(
+                      hub: hub,
+                      s: s,
+                      controller: _aiCtrl,
+                      theme: theme,
+                    ),
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -127,25 +131,53 @@ class _DoctorView extends StatelessWidget {
     final report = hub.assistantReport;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 24),
       children: [
         GlassCard(
           dark: dark,
+          accentColor: DarkGlassPalette.cyan,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
-                  Icon(Icons.phone_android_rounded, color: DarkGlassPalette.cyan),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${s.deviceOverview} · ${dev.model}',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: DarkGlassPalette.cyan.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: DarkGlassPalette.cyan.withValues(alpha: 0.34),
                       ),
                     ),
+                    child: const Icon(
+                      Icons.phone_android_rounded,
+                      color: DarkGlassPalette.cyan,
+                    ),
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.deviceOverview,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (dev.model.isNotEmpty || dev.androidRelease.isNotEmpty)
+                          Text(
+                            '${dev.model} · Android ${dev.androidRelease} (API ${dev.sdkInt})',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   FilledButton.tonalIcon(
                     onPressed: () => hub.runDiagnostics(),
                     icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -155,56 +187,45 @@ class _DoctorView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Wrap(
-                spacing: 18,
-                runSpacing: 10,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  _MiniMetric(
-                    label: s.androidVersion,
-                    value: '${dev.androidRelease} (API ${dev.sdkInt})',
+                  IcePillBadge(
+                    text: s.zeroPermsTitle,
+                    icon: Icons.verified_user_rounded,
+                    color: DarkGlassPalette.mint,
                   ),
                   if (dev.freeStorageBytes > 0)
-                    _MiniMetric(
-                      label: s.freeStorage,
-                      value: formatStorageBytes(dev.freeStorageBytes),
+                    IcePillBadge(
+                      text:
+                          '${s.freeStorage}: ${formatStorageBytes(dev.freeStorageBytes)}',
+                      icon: Icons.sd_storage_rounded,
+                      color: DarkGlassPalette.cyan,
                     ),
                   if (dev.availRamBytes > 0)
-                    _MiniMetric(
-                      label: s.freeRam,
-                      value: formatStorageBytes(dev.availRamBytes),
+                    IcePillBadge(
+                      text:
+                          '${s.freeRam}: ${formatStorageBytes(dev.availRamBytes)}',
+                      icon: Icons.memory_rounded,
+                      color: DarkGlassPalette.purple,
                     ),
                 ],
               ),
-              if (!dev.hasUsageAccess) ...[
+              if (dev.totalStorageBytes > 0) ...[
                 const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: DarkGlassPalette.amber.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: DarkGlassPalette.amber.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        color: DarkGlassPalette.amber,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          s.usageAccessMissing,
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => hub.platform.openUsageAccessSettings(),
-                        child: Text(s.grantUsageAccess),
-                      ),
-                    ],
-                  ),
+                _HealthMeterBar(
+                  label: s.storageUsedLabel,
+                  ratio: (1 - (dev.freeStorageBytes / dev.totalStorageBytes))
+                      .clamp(0.0, 1.0),
+                  color: DarkGlassPalette.cyan,
+                ),
+              ],
+              if (dev.totalRamBytes > 0) ...[
+                const SizedBox(height: 8),
+                _HealthMeterBar(
+                  label: s.ramAvailableLabel,
+                  ratio: (dev.availRamBytes / dev.totalRamBytes).clamp(0.0, 1.0),
+                  color: DarkGlassPalette.mint,
                 ),
               ],
             ],
@@ -260,11 +281,10 @@ class _DoctorView extends StatelessWidget {
 
           // Large apps
           if (report.largeApps.isNotEmpty) ...[
-            Text(
-              '${s.largeAppsTitle} (${report.largeApps.length})',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+            IceSectionTitle(
+              title: '${s.largeAppsTitle} (${report.largeApps.length})',
+              icon: Icons.storage_rounded,
+              color: DarkGlassPalette.amber,
             ),
             const SizedBox(height: 8),
             for (final app in report.largeApps.take(6)) ...[
@@ -322,11 +342,10 @@ class _DoctorView extends StatelessWidget {
           // Duplicate / Similar Function Finder (#12 & #16)
           if (report.duplicateGroups.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              '${s.duplicateAppsTitle} (${report.duplicateGroups.length})',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+            IceSectionTitle(
+              title: '${s.duplicateAppsTitle} (${report.duplicateGroups.length})',
+              icon: Icons.copy_all_rounded,
+              color: DarkGlassPalette.cyan,
             ),
             const SizedBox(height: 8),
             for (final grp in report.duplicateGroups) ...[
@@ -402,11 +421,10 @@ class _DoctorView extends StatelessWidget {
           // Unnecessary Permissions Auditor (#12)
           if (report.permissionAudits.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              '${s.riskyPermsTitle} (${report.permissionAudits.length})',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+            IceSectionTitle(
+              title: '${s.riskyPermsTitle} (${report.permissionAudits.length})',
+              icon: Icons.security_rounded,
+              color: DarkGlassPalette.coral,
             ),
             const SizedBox(height: 8),
             for (final item in report.permissionAudits.take(6)) ...[
@@ -1054,29 +1072,49 @@ class _AiView extends StatelessWidget {
   }
 }
 
-class _MiniMetric extends StatelessWidget {
-  const _MiniMetric({required this.label, required this.value});
+class _HealthMeterBar extends StatelessWidget {
+  const _HealthMeterBar({
+    required this.label,
+    required this.ratio,
+    required this.color,
+  });
 
   final String label;
-  final String value;
+  final double ratio;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            Text(
+              '${(ratio * 100).round()}%',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
-        Text(
-          value,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: ratio,
+            minHeight: 7,
+            backgroundColor: color.withValues(alpha: 0.14),
+            valueColor: AlwaysStoppedAnimation(color),
           ),
         ),
       ],

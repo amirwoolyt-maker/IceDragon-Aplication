@@ -52,9 +52,20 @@ class AppIconBadge extends StatelessWidget {
       return _networkOrPlaceholder(theme);
     }
 
-    final clipped = ClipRRect(
-      borderRadius: radius,
-      child: SizedBox.square(dimension: size, child: coreIcon()),
+    final dark = theme.brightness == Brightness.dark;
+    final clipped = Container(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        border: Border.all(
+          color: dark
+              ? Colors.white.withValues(alpha: 0.14)
+              : Colors.black.withValues(alpha: 0.08),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: SizedBox.square(dimension: size, child: coreIcon()),
+      ),
     );
 
     if (!hasUpdate) return clipped;
@@ -606,3 +617,95 @@ IconData categoryIcon(String key) => switch (key) {
   'shopping_bag' => Icons.shopping_bag_outlined,
   _ => Icons.label_rounded,
 };
+
+/// Compact frosted pill badge for versions, sizes, and status metadata.
+class IcePillBadge extends StatelessWidget {
+  const IcePillBadge({
+    super.key,
+    required this.text,
+    required this.color,
+    this.icon,
+  });
+
+  final String text;
+  final Color color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final label = Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.28)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 4),
+            ],
+            if (constraints.hasBoundedWidth) Flexible(child: label) else label,
+          ],
+        ),
+      );
+    },
+  );
+}
+
+/// Consistent section header with a glowing icon chip and optional trailing widget.
+class IceSectionTitle extends StatelessWidget {
+  const IceSectionTitle({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.color,
+    this.trailing,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color color;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withValues(alpha: 0.30)),
+          ),
+          child: Icon(icon, size: 17, color: color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        if (trailing != null) trailing,
+      ],
+    );
+  }
+}

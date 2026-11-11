@@ -30,9 +30,10 @@ android {
     signingConfigs {
         create("release") {
             if (!releaseKey.isEmpty) {
-                storeFile = file(releaseKey.getProperty("storeFile"))
+                val rawStore = releaseKey.getProperty("storeFile").orEmpty().removePrefix("../")
+                storeFile = rootProject.file(rawStore)
                 storePassword = releaseKey.getProperty("storePassword")
-                keyAlias = releaseKey.getProperty("keyAlias")
+                keyAlias = releaseKey.getProperty("keyAlias", "release")
                 keyPassword = releaseKey.getProperty("keyPassword")
             }
         }

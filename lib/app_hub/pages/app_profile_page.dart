@@ -209,34 +209,36 @@ class _AppProfilePageState extends State<AppProfilePage> {
         : _unified.allPermissions;
     final grantedSet = installed?.grantedPermissions.toSet() ?? const <String>{};
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(s.appProfile),
-        actions: [
-          IconButton(
-            tooltip: s.compare,
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => AppComparePage(
-                  hub: widget.hub,
-                  initialA: CompareTarget(
-                    packageName: widget.packageName,
-                    installed: installed,
-                    unified: _unified,
+    return IceDragonBackdrop(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text(s.appProfile),
+          actions: [
+            IconButton(
+              tooltip: s.compare,
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => AppComparePage(
+                    hub: widget.hub,
+                    initialA: CompareTarget(
+                      packageName: widget.packageName,
+                      installed: installed,
+                      unified: _unified,
+                    ),
                   ),
                 ),
               ),
+              icon: const Icon(Icons.compare_arrows_rounded),
             ),
-            icon: const Icon(Icons.compare_arrows_rounded),
-          ),
-          IconButton(
-            tooltip: s.shareAppSummary,
-            onPressed: () => _shareApp(s),
-            icon: const Icon(Icons.share_rounded),
-          ),
-        ],
-      ),
-      body: ListenableBuilder(
+            IconButton(
+              tooltip: s.shareAppSummary,
+              onPressed: () => _shareApp(s),
+              icon: const Icon(Icons.share_rounded),
+            ),
+          ],
+        ),
+        body: ListenableBuilder(
         listenable: widget.hub,
         builder: (context, _) => ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
@@ -833,6 +835,7 @@ class _AppProfilePageState extends State<AppProfilePage> {
             ],
           ],
         ),
+      ),
       ),
     );
   }

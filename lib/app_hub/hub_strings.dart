@@ -363,4 +363,19 @@ class HubStrings {
   );
   String aiErrorSummary(String error) =>
       tr('Recommendation failed: $error', 'خطا در پیشنهاد هوشمند: $error');
+
+  String get zeroPermsTitle => tr(
+    'Zero-permission ready',
+    'آماده بدون نیاز به دسترسی حساس',
+  );
+  String get zeroPermsDesc => tr(
+    'Works right away with no Restricted Settings or file access required.',
+    'بلافاصله بعد از نصب بدون هیچ دسترسی پیچیده یا دسترسی به فایل‌های شخصی کار می‌کند.',
+  );
+  String get appHubTagline => tr(
+    'Standalone Smart App Hub · Release v1.1.0',
+    'هاب هوشمند مستقل برنامه‌ها · نسخه ۱.۱.۰',
+  );
+  String get storageUsedLabel => tr('Used storage', 'فضای پر شده');
+  String get ramAvailableLabel => tr('Available RAM', 'رم در دسترس');
 }

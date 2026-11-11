@@ -19,6 +19,7 @@ class AppsManagerPage extends StatefulWidget {
 }
 
 class _AppsManagerPageState extends State<AppsManagerPage> {
+  final _searchCtrl = TextEditingController();
   String _query = '';
   String _selectedCategory = 'all';
   bool _showSystem = false;
@@ -30,6 +31,12 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
   void initState() {
     super.initState();
     Future.microtask(() => widget.hub.ensureLoaded());
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   List<InstalledAppDetail> _filteredApps(
@@ -168,14 +175,16 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
         final visible = _filteredApps(hub, s, updatePkgs);
         final catMap = {for (final c in hub.repo.categories) c.id: c};
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(
-              _multiSelect
-                  ? s.selectedCount(_selected.length)
-                  : '${s.appsTitle} (${visible.length})',
-            ),
-            actions: [
+        return IceDragonBackdrop(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              title: Text(
+                _multiSelect
+                    ? s.selectedCount(_selected.length)
+                    : '${s.appsTitle} (${visible.length})',
+              ),
+              actions: [
               IconButton(
                 tooltip: s.scanUpdates,
                 onPressed: hub.scanningUpdates
@@ -268,75 +277,91 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
           ),
           body: Column(
             children: [
-              // Search & category filter bar
+              // Frosted Search & category filter bar
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-                child: Column(
-                  children: [
-                    TextField(
-                      decoration: InputDecoration(
-                        isDense: true,
-                        prefixIcon: const Icon(Icons.search_rounded),
-                        hintText: s.searchAppsHint,
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                child: GlassCard(
+                  dark: dark,
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                  radius: 22,
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          hintText: s.searchAppsHint,
+                          suffixIcon: _query.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close_rounded, size: 18),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    setState(() => _query = '');
+                                  },
+                                )
+                              : null,
+                        ),
+                        onChanged: (v) => setState(() => _query = v),
                       ),
-                      onChanged: (v) => setState(() => _query = v),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 44,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(end: 6),
-                            child: ChoiceChip(
-                              label: Text(s.all),
-                              selected: _selectedCategory == 'all' && !_updatesOnly,
-                              onSelected: (_) => setState(() {
-                                _selectedCategory = 'all';
-                                _updatesOnly = false;
-                              }),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(end: 6),
-                            child: FilterChip(
-                              label: Text(
-                                '${s.updatesOnly} (${updatePkgs.length})',
-                              ),
-                              selected: _updatesOnly,
-                              onSelected: (v) =>
-                                  setState(() => _updatesOnly = v),
-                            ),
-                          ),
-                          for (final cat in hub.repo.categories)
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
                             Padding(
                               padding: const EdgeInsetsDirectional.only(end: 6),
                               child: ChoiceChip(
-                                avatar: CircleAvatar(
-                                  backgroundColor: Color(cat.colorValue),
-                                  radius: 6,
-                                ),
-                                label: Text(cat.label(fa: s.isFa)),
-                                selected: _selectedCategory == cat.id,
+                                label: Text(s.all),
+                                selected:
+                                    _selectedCategory == 'all' && !_updatesOnly,
                                 onSelected: (_) => setState(() {
-                                  _selectedCategory =
-                                      _selectedCategory == cat.id
-                                          ? 'all'
-                                          : cat.id;
+                                  _selectedCategory = 'all';
+                                  _updatesOnly = false;
                                 }),
                               ),
                             ),
-                          ActionChip(
-                            avatar: const Icon(Icons.add_rounded, size: 16),
-                            label: Text(s.newCategory),
-                            onPressed: () =>
-                                showCreateCategoryDialog(context, hub),
-                          ),
-                        ],
+                            Padding(
+                              padding: const EdgeInsetsDirectional.only(end: 6),
+                              child: FilterChip(
+                                label: Text(
+                                  '${s.updatesOnly} (${updatePkgs.length})',
+                                ),
+                                selected: _updatesOnly,
+                                onSelected: (v) =>
+                                    setState(() => _updatesOnly = v),
+                              ),
+                            ),
+                            for (final cat in hub.repo.categories)
+                              Padding(
+                                padding: const EdgeInsetsDirectional.only(end: 6),
+                                child: ChoiceChip(
+                                  avatar: CircleAvatar(
+                                    backgroundColor: Color(cat.colorValue),
+                                    radius: 5,
+                                  ),
+                                  label: Text(cat.label(fa: s.isFa)),
+                                  selected: _selectedCategory == cat.id,
+                                  onSelected: (_) => setState(() {
+                                    _selectedCategory =
+                                        _selectedCategory == cat.id
+                                            ? 'all'
+                                            : cat.id;
+                                  }),
+                                ),
+                              ),
+                            ActionChip(
+                              avatar: const Icon(Icons.add_rounded, size: 16),
+                              label: Text(s.newCategory),
+                              onPressed: () =>
+                                  showCreateCategoryDialog(context, hub),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               if (hub.loadingApps && hub.installedApps.isEmpty)
@@ -374,8 +399,11 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                         dark: dark,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 10,
+                          vertical: 11,
                         ),
+                        accentColor: isSel
+                            ? theme.colorScheme.primary
+                            : (hasUpdate ? DarkGlassPalette.amber : null),
                         borderColor: isSel
                             ? theme.colorScheme.primary
                             : null,
@@ -422,7 +450,7 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                               ],
                               AppIconBadge(
                                 iconFuture: hub.iconFor(app.package),
-                                size: 46,
+                                size: 48,
                                 hasUpdate: hasUpdate,
                                 updateTooltip: s.updateAvailableBadge,
                               ),
@@ -436,37 +464,73 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: theme.textTheme.titleSmall
-                                          ?.copyWith(fontWeight: FontWeight.w700),
+                                          ?.copyWith(fontWeight: FontWeight.w800),
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      [
+                                    const SizedBox(height: 5),
+                                    Wrap(
+                                      spacing: 5,
+                                      runSpacing: 4,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
                                         if (app.versionName.isNotEmpty)
-                                          'v${app.versionName}',
+                                          IcePillBadge(
+                                            text: 'v${app.versionName}',
+                                            color: theme.colorScheme.primary,
+                                          ),
                                         if (app.totalBytes > 0)
-                                          formatStorageBytes(app.totalBytes),
-                                        if (catText.isNotEmpty) catText,
-                                      ].join(' · '),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
+                                          IcePillBadge(
+                                            text: formatStorageBytes(
+                                              app.totalBytes,
+                                            ),
+                                            color: DarkGlassPalette.cyan,
+                                          ),
+                                        if (catText.isNotEmpty)
+                                          Text(
+                                            catText,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.labelSmall
+                                                ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
-                              if (app.launcher)
-                                IconButton(
-                                  tooltip: s.boostAndLaunch,
-                                  onPressed: () =>
-                                      boostAndLaunchApp(context, hub, app),
-                                  icon: Icon(
-                                    Icons.rocket_launch_rounded,
-                                    size: 20,
-                                    color: DarkGlassPalette.cyan,
+                              if (app.launcher) ...[
+                                const SizedBox(width: 4),
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: DarkGlassPalette.cyan.withValues(
+                                      alpha: dark ? 0.14 : 0.10,
+                                    ),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: DarkGlassPalette.cyan.withValues(
+                                        alpha: 0.30,
+                                      ),
+                                    ),
+                                  ),
+                                  child: IconButton(
+                                    tooltip: s.boostAndLaunch,
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () =>
+                                        boostAndLaunchApp(context, hub, app),
+                                    icon: Icon(
+                                      Icons.rocket_launch_rounded,
+                                      size: 19,
+                                      color: dark
+                                          ? DarkGlassPalette.cyan
+                                          : theme.colorScheme.secondary,
+                                    ),
                                   ),
                                 ),
+                              ],
                               PopupMenuButton<String>(
                                 onSelected: (action) async {
                                   switch (action) {
@@ -647,6 +711,7 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                   ),
                 )
               : null,
+          ),
         );
       },
     );

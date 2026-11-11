@@ -104,193 +104,216 @@ class _StoreHubPageState extends State<StoreHubPage> {
           hub.device,
         );
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(s.storesTitle),
-            actions: [
-              if (hub.activeProxyAddress != null)
-                Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 12),
-                  child: Chip(
-                    visualDensity: VisualDensity.compact,
-                    avatar: const Icon(
-                      Icons.shield_rounded,
-                      size: 14,
+        return IceDragonBackdrop(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              title: Text(s.storesTitle),
+              actions: [
+                if (hub.activeProxyAddress != null)
+                  const Padding(
+                    padding: EdgeInsetsDirectional.only(end: 12),
+                    child: IcePillBadge(
+                      text: 'VPN',
+                      icon: Icons.shield_rounded,
                       color: DarkGlassPalette.mint,
                     ),
-                    label: Text(
-                      'VPN',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: DarkGlassPalette.mint,
-                        fontWeight: FontWeight.w800,
-                      ),
+                  ),
+              ],
+            ),
+            body: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                  child: GlassCard(
+                    dark: dark,
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                    radius: 22,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SegmentedButton<bool>(
+                          showSelectedIcon: false,
+                          segments: [
+                            ButtonSegment(
+                              value: false,
+                              label: Text(s.searchTab),
+                            ),
+                            ButtonSegment(value: true, label: Text(s.radarTab)),
+                          ],
+                          selected: {_radarMode},
+                          onSelectionChanged: (v) {
+                            final radar = v.first;
+                            setState(() => _radarMode = radar);
+                            if (radar &&
+                                hub.radarApps.isEmpty &&
+                                !hub.loadingRadar) {
+                              hub.loadRadar(hl: s.isFa ? 'fa' : 'en');
+                            }
+                          },
+                        ),
+                        if (!_radarMode) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchCtrl,
+                                  textInputAction: TextInputAction.search,
+                                  onSubmitted: _runSearch,
+                                  onChanged: (_) => setState(() {}),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    prefixIcon: const Icon(
+                                      Icons.search_rounded,
+                                    ),
+                                    hintText: s.smartSearchHint,
+                                    suffixIcon: _searchCtrl.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(
+                                              Icons.close_rounded,
+                                              size: 18,
+                                            ),
+                                            onPressed: () =>
+                                                setState(_searchCtrl.clear),
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              FilledButton(
+                                onPressed: hub.searchingStores
+                                    ? null
+                                    : () => _runSearch(_searchCtrl.text),
+                                child: Text(s.search),
+                              ),
+                            ],
+                          ),
+                          if (resp != null) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                for (final e in resp.storeReachable.entries)
+                                  IcePillBadge(
+                                    text: e.key.label(fa: s.isFa),
+                                    icon: e.value
+                                        ? Icons.check_circle_rounded
+                                        : Icons.error_outline_rounded,
+                                    color: e.value
+                                        ? DarkGlassPalette.mint
+                                        : DarkGlassPalette.coral,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ],
+                        const SizedBox(height: 8),
+                        // Sort & Filter strip (#10)
+                        SizedBox(
+                          height: 40,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsetsDirectional.only(
+                                  end: 6,
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: dark
+                                          ? Colors.white.withValues(alpha: 0.05)
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: theme.colorScheme.outlineVariant,
+                                      ),
+                                    ),
+                                    child: DropdownButton<StoreSortMode>(
+                                      value: _sort,
+                                      isDense: true,
+                                      items: [
+                                        DropdownMenuItem(
+                                          value: StoreSortMode.relevance,
+                                          child: Text(s.sortRelevance),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: StoreSortMode.popularity,
+                                          child: Text(s.sortPopularity),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: StoreSortMode.sizeAsc,
+                                          child: Text(s.sortSizeAsc),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: StoreSortMode.sizeDesc,
+                                          child: Text(s.sortSizeDesc),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: StoreSortMode.storeCount,
+                                          child: Text(s.sortStoreCount),
+                                        ),
+                                      ],
+                                      onChanged: (v) {
+                                        if (v != null) setState(() => _sort = v);
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsetsDirectional.only(
+                                  end: 6,
+                                ),
+                                child: FilterChip(
+                                  label: Text(s.filterFreeOnly),
+                                  selected: _freeOnly,
+                                  onSelected: (v) =>
+                                      setState(() => _freeOnly = v),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsetsDirectional.only(
+                                  end: 6,
+                                ),
+                                child: FilterChip(
+                                  label: Text(s.filterCompatibleOnly),
+                                  selected: _compatibleOnly,
+                                  onSelected: (v) =>
+                                      setState(() => _compatibleOnly = v),
+                                ),
+                              ),
+                              for (final st in [
+                                StoreId.googlePlay,
+                                StoreId.bazaar,
+                                StoreId.myket,
+                              ])
+                                Padding(
+                                  padding: const EdgeInsetsDirectional.only(
+                                    end: 6,
+                                  ),
+                                  child: ChoiceChip(
+                                    label: Text(st.label(fa: s.isFa)),
+                                    selected: _storeFilter == st,
+                                    onSelected: (_) => setState(() {
+                                      _storeFilter =
+                                          _storeFilter == st ? null : st;
+                                    }),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-            ],
-          ),
-          body: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SegmentedButton<bool>(
-                      showSelectedIcon: false,
-                      segments: [
-                        ButtonSegment(value: false, label: Text(s.searchTab)),
-                        ButtonSegment(value: true, label: Text(s.radarTab)),
-                      ],
-                      selected: {_radarMode},
-                      onSelectionChanged: (v) {
-                        final radar = v.first;
-                        setState(() => _radarMode = radar);
-                        if (radar && hub.radarApps.isEmpty && !hub.loadingRadar) {
-                          hub.loadRadar(hl: s.isFa ? 'fa' : 'en');
-                        }
-                      },
-                    ),
-                    if (!_radarMode) ...[
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _searchCtrl,
-                              textInputAction: TextInputAction.search,
-                              onSubmitted: _runSearch,
-                              decoration: InputDecoration(
-                                isDense: true,
-                                prefixIcon: const Icon(Icons.search_rounded),
-                                hintText: s.smartSearchHint,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton(
-                            onPressed: hub.searchingStores
-                                ? null
-                                : () => _runSearch(_searchCtrl.text),
-                            child: Text(s.search),
-                          ),
-                        ],
-                      ),
-                      if (resp != null) ...[
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            for (final e in resp.storeReachable.entries)
-                              Chip(
-                                visualDensity: VisualDensity.compact,
-                                avatar: Icon(
-                                  e.value
-                                      ? Icons.check_circle_rounded
-                                      : Icons.error_outline_rounded,
-                                  size: 14,
-                                  color: e.value
-                                      ? DarkGlassPalette.mint
-                                      : DarkGlassPalette.coral,
-                                ),
-                                label: Text(e.key.label(fa: s.isFa)),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ],
-                    const SizedBox(height: 8),
-                    // Sort & Filter strip (#10)
-                    SizedBox(
-                      height: 44,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(end: 6),
-                            child: DropdownButtonHideUnderline(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: theme.colorScheme.outlineVariant,
-                                  ),
-                                ),
-                                child: DropdownButton<StoreSortMode>(
-                                  value: _sort,
-                                  isDense: true,
-                                  items: [
-                                    DropdownMenuItem(
-                                      value: StoreSortMode.relevance,
-                                      child: Text(s.sortRelevance),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: StoreSortMode.popularity,
-                                      child: Text(s.sortPopularity),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: StoreSortMode.sizeAsc,
-                                      child: Text(s.sortSizeAsc),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: StoreSortMode.sizeDesc,
-                                      child: Text(s.sortSizeDesc),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: StoreSortMode.storeCount,
-                                      child: Text(s.sortStoreCount),
-                                    ),
-                                  ],
-                                  onChanged: (v) {
-                                    if (v != null) setState(() => _sort = v);
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(end: 6),
-                            child: FilterChip(
-                              label: Text(s.filterFreeOnly),
-                              selected: _freeOnly,
-                              onSelected: (v) => setState(() => _freeOnly = v),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(end: 6),
-                            child: FilterChip(
-                              label: Text(s.filterCompatibleOnly),
-                              selected: _compatibleOnly,
-                              onSelected: (v) =>
-                                  setState(() => _compatibleOnly = v),
-                            ),
-                          ),
-                          for (final st in [
-                            StoreId.googlePlay,
-                            StoreId.bazaar,
-                            StoreId.myket,
-                          ])
-                            Padding(
-                              padding: const EdgeInsetsDirectional.only(end: 6),
-                              child: ChoiceChip(
-                                label: Text(st.label(fa: s.isFa)),
-                                selected: _storeFilter == st,
-                                onSelected: (_) => setState(() {
-                                  _storeFilter =
-                                      _storeFilter == st ? null : st;
-                                }),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               if (hub.searchingStores || hub.loadingRadar)
                 Expanded(
                   child: Center(
@@ -311,58 +334,81 @@ class _StoreHubPageState extends State<StoreHubPage> {
                 Expanded(
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _radarMode
-                                ? Icons.radar_rounded
-                                : Icons.travel_explore_rounded,
-                            size: 48,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _radarMode ? s.appRadarSubtitle : s.noStoreResults,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          if (!_radarMode) ...[
-                            const SizedBox(height: 14),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.center,
-                              children: [
-                                for (final sample in s.isFa
-                                    ? const [
-                                        'برنامه ویرایش عکس',
-                                        'ادیت ویدئو',
-                                        'هوش مصنوعی',
-                                      ]
-                                    : const [
-                                        'photo editor',
-                                        'video editor',
-                                        'AI assistant',
-                                      ])
-                                  ActionChip(
-                                    label: Text(sample),
-                                    onPressed: () => _runSearch(sample),
+                      padding: const EdgeInsets.all(20),
+                      child: GlassCard(
+                        dark: dark,
+                        accentColor: DarkGlassPalette.cyan,
+                        padding: const EdgeInsets.all(22),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 68,
+                              height: 68,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    DarkGlassPalette.cyan.withValues(alpha: 0.24),
+                                    DarkGlassPalette.purple.withValues(alpha: 0.24),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: DarkGlassPalette.cyan.withValues(
+                                    alpha: 0.36,
                                   ),
-                              ],
+                                ),
+                              ),
+                              child: Icon(
+                                _radarMode
+                                    ? Icons.radar_rounded
+                                    : Icons.travel_explore_rounded,
+                                size: 34,
+                                color: DarkGlassPalette.cyan,
+                              ),
                             ),
-                          ] else ...[
-                            const SizedBox(height: 12),
-                            FilledButton.tonal(
-                              onPressed: () =>
-                                  hub.loadRadar(hl: s.isFa ? 'fa' : 'en'),
-                              child: Text(s.refresh),
+                            const SizedBox(height: 14),
+                            Text(
+                              _radarMode ? s.appRadarSubtitle : s.noStoreResults,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
+                            if (!_radarMode) ...[
+                              const SizedBox(height: 16),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.center,
+                                children: [
+                                  for (final sample in s.isFa
+                                      ? const [
+                                          'برنامه ویرایش عکس',
+                                          'ادیت ویدئو',
+                                          'هوش مصنوعی',
+                                        ]
+                                      : const [
+                                          'photo editor',
+                                          'video editor',
+                                          'AI assistant',
+                                        ])
+                                    ActionChip(
+                                      label: Text(sample),
+                                      onPressed: () => _runSearch(sample),
+                                    ),
+                                ],
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 14),
+                              FilledButton.tonal(
+                                onPressed: () =>
+                                    hub.loadRadar(hl: s.isFa ? 'fa' : 'en'),
+                                child: Text(s.refresh),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -543,7 +589,8 @@ class _StoreHubPageState extends State<StoreHubPage> {
                     },
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         );
       },
