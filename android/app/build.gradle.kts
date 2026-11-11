@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
@@ -8,6 +9,17 @@ plugins {
 val releaseKey = Properties().apply {
     val file = rootProject.file("key.properties")
     if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun hasValidReleaseSigning(): Boolean {
+    if (releaseKey.isEmpty) return false
+    val rawStore = releaseKey.getProperty("storeFile")?.trim().orEmpty().removePrefix("../")
+    if (rawStore.isEmpty()) return false
+    val ksFile = rootProject.file(rawStore)
+    return ksFile.exists() &&
+        !releaseKey.getProperty("storePassword").isNullOrBlank() &&
+        !releaseKey.getProperty("keyAlias").isNullOrBlank() &&
+        !releaseKey.getProperty("keyPassword").isNullOrBlank()
 }
 
 android {
@@ -29,11 +41,11 @@ android {
 
     signingConfigs {
         create("release") {
-            if (!releaseKey.isEmpty) {
-                val rawStore = releaseKey.getProperty("storeFile").orEmpty().removePrefix("../")
+            if (hasValidReleaseSigning()) {
+                val rawStore = releaseKey.getProperty("storeFile").trim().removePrefix("../")
                 storeFile = rootProject.file(rawStore)
                 storePassword = releaseKey.getProperty("storePassword")
-                keyAlias = releaseKey.getProperty("keyAlias", "release")
+                keyAlias = releaseKey.getProperty("keyAlias")
                 keyPassword = releaseKey.getProperty("keyPassword")
             }
         }
@@ -41,8 +53,21 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName(if (releaseKey.isEmpty) "debug" else "release")
+            signingConfig = signingConfigs.getByName("release")
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val runningReleaseTask = allTasks.any {
+        it.name.contains("Release") &&
+            !it.name.contains("UnitTest") &&
+            !it.name.contains("AndroidTest")
+    }
+    if (runningReleaseTask && !hasValidReleaseSigning()) {
+        throw GradleException(
+            "Release build requires valid android/key.properties and keystore file; debug fallback is disabled.",
+        )
     }
 }
 

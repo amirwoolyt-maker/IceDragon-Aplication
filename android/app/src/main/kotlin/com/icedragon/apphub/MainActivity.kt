@@ -1,7 +1,6 @@
 package com.icedragon.apphub
 
 import android.app.ActivityManager
-import android.app.usage.StorageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -15,9 +14,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
-import android.os.Process
 import android.os.StatFs
-import android.os.storage.StorageManager
 import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -152,13 +149,6 @@ class MainActivity : FlutterActivity() {
             @Suppress("DEPRECATION")
             pm.getInstalledPackages(PackageManager.GET_PERMISSIONS)
         }
-        val usageOk = hasUsageAccess()
-        val storageStats = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && usageOk) {
-            getSystemService(StorageStatsManager::class.java)
-        } else {
-            null
-        }
-        val user = Process.myUserHandle()
         val result = ArrayList<Map<String, Any>>(packages.size)
         for (pkgInfo in packages) {
             val appInfo = pkgInfo.applicationInfo ?: continue
@@ -197,18 +187,6 @@ class MainActivity : FlutterActivity() {
                 if (f.exists()) apkBytes += f.length()
             }
 
-            var dataBytes = 0L
-            var cacheBytes = 0L
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && storageStats != null) {
-                runCatching {
-                    val uuid = runCatching { appInfo.storageUuid }.getOrNull() ?: StorageManager.UUID_DEFAULT
-                    val stats = storageStats.queryStatsForPackage(uuid, pkgInfo.packageName, user)
-                    if (stats.appBytes > apkBytes) apkBytes = stats.appBytes
-                    dataBytes = stats.dataBytes
-                    cacheBytes = stats.cacheBytes
-                }
-            }
-
             val reqPerms = pkgInfo.requestedPermissions?.filterNotNull() ?: emptyList()
             val permFlags = pkgInfo.requestedPermissionsFlags
             val grantedPerms = ArrayList<String>()
@@ -236,8 +214,8 @@ class MainActivity : FlutterActivity() {
                     "targetSdk" to appInfo.targetSdkVersion,
                     "installer" to installer,
                     "apkBytes" to apkBytes,
-                    "dataBytes" to dataBytes,
-                    "cacheBytes" to cacheBytes,
+                    "dataBytes" to 0L,
+                    "cacheBytes" to 0L,
                     "permissions" to reqPerms,
                     "grantedPermissions" to grantedPerms,
                 ),

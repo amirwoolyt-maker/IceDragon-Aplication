@@ -449,7 +449,7 @@ class _AppProfilePageState extends State<AppProfilePage> {
                               : s.unknown),
                   ),
                   _StatPill(
-                    label: installed != null ? s.installedSize : s.downloadSize,
+                    label: installed != null ? s.apkSize : s.downloadSize,
                     value: installed != null && installed.totalBytes > 0
                         ? formatStorageBytes(installed.totalBytes)
                         : (_unified.bestSizeLabel.isNotEmpty

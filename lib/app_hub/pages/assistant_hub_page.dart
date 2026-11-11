@@ -259,9 +259,11 @@ class _DoctorView extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  s.reclaimableSpace(
-                    formatStorageBytes(report.potentialReclaimBytes),
-                  ),
+                  report.potentialReclaimBytes > 0
+                      ? s.reclaimableSpace(
+                          formatStorageBytes(report.potentialReclaimBytes),
+                        )
+                      : s.nothingToReclaim,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: DarkGlassPalette.mint,
                     fontWeight: FontWeight.w700,

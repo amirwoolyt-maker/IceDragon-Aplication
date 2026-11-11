@@ -166,7 +166,7 @@ class HubStrings {
       tr('Description & Features', 'توضیحات و امکانات');
   String get whatsNew => tr("What's new", 'تغییرات نسخه جدید');
   String get lastUpdated => tr('Last updated', 'آخرین بروزرسانی');
-  String get installedSize => tr('Installed size', 'حجم روی گوشی');
+  String get apkSize => tr('APK size', 'حجم APK');
   String get permissions => tr('Permissions', 'مجوزهای دسترسی');
   String get sensitivePermissions => tr('Sensitive', 'حساس');
   String get granted => tr('Granted', 'مجاز');
@@ -206,11 +206,6 @@ class HubStrings {
   String get freeStorage => tr('Free storage', 'فضای آزاد');
   String get freeRam => tr('Free RAM', 'رم آزاد');
   String get androidVersion => tr('Android', 'نسخه اندروید');
-  String get usageAccessMissing => tr(
-    'Grant Usage Access to read exact app Data & Cache sizes (APK sizes are shown either way).',
-    'برای خواندن دقیق حجم دیتا و کش برنامه‌ها، دسترسی Usage Access را بدهید (حجم APK بدون نیاز به دسترسی نمایش داده می‌شود).',
-  );
-  String get grantUsageAccess => tr('Grant access', 'دادن دسترسی');
   String get runDiagnostics => tr('Scan phone now', 'بررسی هوشمند گوشی');
 
   String get largeAppsTitle => tr('Large Storage Apps', 'برنامه‌های پرحجم');
@@ -224,6 +219,10 @@ class HubStrings {
       tr('How to Free More Space', 'پیشنهاد آزادسازی فضا');
   String reclaimableSpace(String size) =>
       tr('Potential savings: ~$size', 'فضای قابل آزادسازی: حدود $size');
+  String get nothingToReclaim => tr(
+    'No duplicate apps found to free space',
+    'موردی برای آزادسازی پیدا نشد',
+  );
   String get openAndroidStorage =>
       tr('Clear cache in settings', 'تنظیمات حافظه / کش');
   String get reviewPermissions => tr('Review permissions', 'بررسی مجوزها');
@@ -349,10 +348,6 @@ class HubStrings {
   );
   String get vpnBypassAdd => tr('+ VPN Bypass', 'افزودن به عبور مستقیم');
   String get vpnBypassRemove => tr('- VPN Bypass', 'حذف از عبور مستقیم');
-  String get usageAccessGranted => tr(
-    'Granted · Usage time and stale-app analysis are active',
-    'فعال · تحلیل زمان استفاده و برنامه‌های کم‌کاربرد در دسترس است',
-  );
   String get importCollectionInvalid => tr(
     'Invalid or corrupted collection code. Paste a valid IceDragon code or JSON.',
     'کد یا متن مجموعه نامعتبر است. لطفاً یک کد یا JSON معتبر وارد کنید.',

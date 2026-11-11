@@ -527,6 +527,17 @@ void main() {
     expect(find.text('Zero-permission ready'), findsOneWidget);
     expect(find.text('Grant access'), findsNothing);
 
+    final zeroReclaimHub = HubController(
+      platform: _FakeHubPlatform()..apps = [platform.apps.last],
+      stores: _StubStoreAggregator(),
+      repository: HubRepository(),
+    );
+    addTearDown(zeroReclaimHub.dispose);
+    await tester.pumpWidget(_wrap(AssistantHubPage(hub: zeroReclaimHub)));
+    await tester.pumpAndSettle();
+    expect(find.text('No duplicate apps found to free space'), findsOneWidget);
+    expect(find.textContaining('0 B'), findsNothing);
+
     await tester.pumpWidget(
       _wrap(
         AppProfilePage(
@@ -553,6 +564,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('App Profile'), findsOneWidget);
     expect(find.text('Picsart'), findsOneWidget);
+    expect(find.text('APK size'), findsOneWidget);
+    expect(find.text('Installed size'), findsNothing);
   });
 
   test('Store parsers handle real Play variants, Myket card scoping & Bazaar errors', () {

@@ -47,8 +47,9 @@ jobs:
       - name: Flutter test
         run: flutter test --no-pub --reporter expanded
 
-  build-apk:
+  build-debug:
     needs: verify
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -64,24 +65,58 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Optional release keystore
+      - name: Build debug APK (PR check)
+        run: |
+          flutter pub get
+          flutter build apk --debug
+
+  build-apk:
+    needs: verify
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    outputs:
+      signed_sha256: ${{ steps.keystore.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Require & verify release keystore
         id: keystore
+        shell: bash
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE" ] && [ -n "$PASSWORD" ]; then
-            printf '%s' "$KEYSTORE" | tr -d '\r\n ' | base64 -d > android/release.jks
-            keytool -list -keystore android/release.jks -storepass "$PASSWORD" -alias release >/dev/null
-            printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=release\nkeyPassword=%s\n' "$PASSWORD" "$PASSWORD" > android/key.properties
-            echo "mode=release" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::ANDROID_KEYSTORE_BASE64 or ANDROID_KEYSTORE_PASSWORD not set — falling back to debug signing."
-            echo "mode=debug" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          if [ -z "$KEYSTORE" ] || [ -z "$PASSWORD" ]; then
+            echo "::error::Missing required ANDROID_KEYSTORE_BASE64 or ANDROID_KEYSTORE_PASSWORD secret. Refusing release build without dedicated signing keystore."
+            exit 1
           fi
+
+          printf '%s' "$KEYSTORE" | tr -d '\r\n ' | base64 -d > android/release.jks
+          cert_info="$(keytool -list -v -keystore android/release.jks -storepass "$PASSWORD" -alias release)"
+          expected_sha256="$(printf '%s\n' "$cert_info" | sed -nE 's/.*SHA-?256:[[:space:]]*([0-9A-Fa-f:]+).*/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          if [ "${#expected_sha256}" -ne 64 ]; then
+            echo "::error::Failed to extract SHA-256 certificate fingerprint from release keystore."
+            exit 1
+          fi
+
+          printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=release\nkeyPassword=%s\n' "$PASSWORD" "$PASSWORD" > android/key.properties
+          echo "sha256=$expected_sha256" >> "$GITHUB_OUTPUT"
 
       - name: Build release APKs
         run: |
+          set -euo pipefail
           flutter pub get
           mkdir -p out
           flutter build apk --release --split-per-abi
@@ -90,8 +125,36 @@ jobs:
           done
           flutter build apk --release
           cp build/app/outputs/flutter-apk/app-release.apk out/IceDragon-AppHub-universal.apk
-          keytool -printcert -jarfile out/IceDragon-AppHub-universal.apk | head -n 12 || true
-          echo "Signing mode: ${{ steps.keystore.outputs.mode }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify APK signatures & SHA-256 certificates
+        shell: bash
+        env:
+          EXPECTED_SHA256: ${{ steps.keystore.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          apksigner_bin="$(find "$sdk_root/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          if [ ! -x "$apksigner_bin" ]; then
+            echo "::error::apksigner tool not found under $sdk_root/build-tools"
+            exit 1
+          fi
+
+          for apk in out/IceDragon-AppHub-arm64-v8a.apk out/IceDragon-AppHub-armeabi-v7a.apk out/IceDragon-AppHub-x86_64.apk out/IceDragon-AppHub-universal.apk; do
+            test -f "$apk"
+            echo "=== Verifying $apk ==="
+            cert_out="$("$apksigner_bin" verify --verbose --print-certs "$apk")"
+            printf '%s\n' "$cert_out"
+            if ! printf '%s\n' "$cert_out" | grep -q '^Number of signers: 1$'; then
+              echo "::error::Expected exactly 1 signer certificate for $apk"
+              exit 1
+            fi
+            actual_sha256="$(printf '%s\n' "$cert_out" | sed -nE 's/.*certificate SHA-256 digest:[[:space:]]*([0-9A-Fa-f:]+).*/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+            if [ -z "$actual_sha256" ] || [ "$actual_sha256" != "$EXPECTED_SHA256" ]; then
+              echo "::error::Certificate SHA-256 mismatch for $apk (expected $EXPECTED_SHA256, got ${actual_sha256:-empty})"
+              exit 1
+            fi
+          done
+          echo "Verified release signing certificate SHA-256 across all built APKs." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clean keystore files
         if: always()
@@ -105,7 +168,7 @@ jobs:
 
   release:
     needs: [verify, build-apk]
-    if: ${{ !failure() && !cancelled() && github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') }}
+    if: ${{ !failure() && !cancelled() && github.event_name != 'pull_request' && needs.build-apk.outputs.signed_sha256 != '' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -122,6 +185,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         working-directory: release
         run: |
+          set -euo pipefail
           v="${{ needs.verify.outputs.version }}"
           tag="${GITHUB_REF_NAME}"
           if [[ "$GITHUB_REF" != refs/tags/* ]]; then

@@ -19,5 +19,9 @@ android/local.properties
 android/key.properties
 android/**/*.jks
 android/**/*.keystore
+*.jks
+*.keystore
+key.properties
+GITHUB_SECRETS.txt
 *.iml
 .idea/
