@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="hub_data/" />
+        <exclude domain="sharedpref" path="hub_secure.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="hub_data/" />
+        <exclude domain="sharedpref" path="hub_secure.xml" />
+    </device-transfer>
+</data-extraction-rules>
