@@ -321,7 +321,7 @@ class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
               nameFa: _faCtrl.text,
               colorValue: _selectedColor,
             );
-            if (mounted) Navigator.of(context).pop(created);
+            if (context.mounted) Navigator.of(context).pop(created);
           },
           child: Text(s.create),
         ),
@@ -394,7 +394,7 @@ class _NewCollectionDialogState extends State<_NewCollectionDialog> {
               name: _nameCtrl.text,
               description: _descCtrl?.text ?? '',
             );
-            if (mounted) Navigator.of(context).pop(col);
+            if (context.mounted) Navigator.of(context).pop(col);
           },
           child: Text(s.create),
         ),

@@ -1130,7 +1130,7 @@ class _ImportCollectionDialogState extends State<_ImportCollectionDialog> {
         FilledButton(
           onPressed: () async {
             final ok = await widget.hub.importSharedCollection(_ctrl.text);
-            if (!mounted) return;
+            if (!context.mounted) return;
             if (ok) {
               Navigator.of(context).pop();
             } else {
