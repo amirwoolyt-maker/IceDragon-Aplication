@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'hub_models.dart';
 
@@ -128,13 +129,11 @@ class StoreAggregator {
         try {
           final hits = directPackage
               ? [
-                  if (await fetchGooglePlayDetails(
-                        trimmed,
-                        hl: hl,
-                        proxyAddress: proxyAddress,
-                      )
-                      case final d?)
-                    d,
+                  ?await fetchGooglePlayDetails(
+                    trimmed,
+                    hl: hl,
+                    proxyAddress: proxyAddress,
+                  ),
                 ]
               : await searchGooglePlay(
                   trimmed,
@@ -152,12 +151,10 @@ class StoreAggregator {
         try {
           final hits = directPackage
               ? [
-                  if (await fetchBazaarDetails(
-                        trimmed,
-                        proxyAddress: proxyAddress,
-                      )
-                      case final d?)
-                    d,
+                  ?await fetchBazaarDetails(
+                    trimmed,
+                    proxyAddress: proxyAddress,
+                  ),
                 ]
               : await searchBazaar(trimmed, proxyAddress: proxyAddress);
           reachable[StoreId.bazaar] = true;
@@ -171,12 +168,10 @@ class StoreAggregator {
         try {
           final hits = directPackage
               ? [
-                  if (await fetchMyketDetails(
-                        trimmed,
-                        proxyAddress: proxyAddress,
-                      )
-                      case final d?)
-                    d,
+                  ?await fetchMyketDetails(
+                    trimmed,
+                    proxyAddress: proxyAddress,
+                  ),
                 ]
               : await searchMyket(trimmed, proxyAddress: proxyAddress);
           reachable[StoreId.myket] = true;

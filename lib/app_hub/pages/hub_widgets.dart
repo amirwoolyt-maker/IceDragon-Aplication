@@ -351,6 +351,7 @@ Future<void> showAssignCategoriesSheet(
                   children: [
                     for (final cat in hub.repo.categories)
                       CheckboxListTile(
+                        controlAffinity: ListTileControlAffinity.leading,
                         value: selected.contains(cat.id),
                         onChanged: (v) => setState(() {
                           if (v == true) {
@@ -359,12 +360,17 @@ Future<void> showAssignCategoriesSheet(
                             selected.remove(cat.id);
                           }
                         }),
-                        secondary: CircleAvatar(
-                          radius: 12,
-                          backgroundColor: Color(cat.colorValue),
+                        title: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 10,
+                              backgroundColor: Color(cat.colorValue),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(cat.label(fa: s.isFa))),
+                          ],
                         ),
-                        title: Text(cat.label(fa: s.isFa)),
-                        trailing: cat.builtIn
+                        secondary: cat.builtIn
                             ? null
                             : IconButton(
                                 icon: const Icon(
