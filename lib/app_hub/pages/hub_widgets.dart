@@ -704,7 +704,7 @@ class IceSectionTitle extends StatelessWidget {
             ),
           ),
         ),
-        if (trailing != null) trailing,
+        if (trailing case final t?) t,
       ],
     );
   }
