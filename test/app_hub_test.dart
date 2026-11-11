@@ -533,10 +533,17 @@ void main() {
       repository: HubRepository(),
     );
     addTearDown(zeroReclaimHub.dispose);
-    await tester.pumpWidget(_wrap(AssistantHubPage(hub: zeroReclaimHub)));
+    await tester.pumpWidget(
+      _wrap(
+        AssistantHubPage(
+          key: const ValueKey('zero-reclaim'),
+          hub: zeroReclaimHub,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('No duplicate apps found to free space'), findsOneWidget);
-    expect(find.textContaining('0 B'), findsNothing);
+    expect(find.textContaining('Potential savings:'), findsNothing);
 
     await tester.pumpWidget(
       _wrap(

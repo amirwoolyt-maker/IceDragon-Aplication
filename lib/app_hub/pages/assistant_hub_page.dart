@@ -31,6 +31,18 @@ class _AssistantHubPageState extends State<AssistantHubPage> {
   @override
   void initState() {
     super.initState();
+    _ensureDiagnostics();
+  }
+
+  @override
+  void didUpdateWidget(covariant AssistantHubPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.hub != oldWidget.hub) {
+      _ensureDiagnostics();
+    }
+  }
+
+  void _ensureDiagnostics() {
     Future.microtask(() async {
       await widget.hub.ensureLoaded();
       if (mounted && widget.hub.assistantReport == null) {
