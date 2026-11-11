@@ -80,7 +80,9 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
     await widget.hub.refreshInstalledApps();
     if (!mounted) return;
     if (targets.isNotEmpty) {
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      messenger?.hideCurrentSnackBar();
+      messenger?.showSnackBar(
         SnackBar(
           content: Text(
             removedCount == 0
@@ -100,7 +102,9 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
       bypass: bypass,
     );
     if (!mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.hideCurrentSnackBar();
+    messenger?.showSnackBar(
       SnackBar(
         content: Text(
           ok
@@ -108,6 +112,7 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
               : s.bypassListSavedCount(count, bypass),
         ),
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
         action: ok
             ? null
             : SnackBarAction(
@@ -546,7 +551,7 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                 ),
             ],
           ),
-          bottomSheet: _multiSelect && _selected.isNotEmpty
+          bottomNavigationBar: _multiSelect && _selected.isNotEmpty
               ? SafeArea(
                   child: Container(
                     padding: const EdgeInsets.symmetric(

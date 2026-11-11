@@ -558,7 +558,10 @@ void main() {
       final root = List<Object?>.filled(141, null, growable: true);
       root[0] = [title];
       root[140] = vBlock;
-      final ds5 = jsonEncode([null, null, root]);
+      final ds5 = jsonEncode([
+        null,
+        [null, null, root],
+      ]);
       return '''
         <script type="application/ld+json">
         {"@type":"SoftwareApplication","name":"$title","offers":[{"price":"0","priceCurrency":"USD"}]}
@@ -858,20 +861,26 @@ void main() {
     await tester.tap(find.text('Android VPN Settings'));
     await tester.pumpAndSettle();
     expect(platform.openedVpnSettingsCount, 1);
-    await tester.pumpAndSettle(const Duration(seconds: 5));
+    ScaffoldMessenger.of(
+      tester.element(find.byType(AppsManagerPage)),
+    ).hideCurrentSnackBar();
+    await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('- VPN Bypass'));
     await tester.tap(find.text('- VPN Bypass'));
     await tester.pumpAndSettle();
     expect(hub.repo.vpnBypassPackages, isEmpty);
-    await tester.pumpAndSettle(const Duration(seconds: 5));
+    ScaffoldMessenger.of(
+      tester.element(find.byType(AppsManagerPage)),
+    ).hideCurrentSnackBar();
+    await tester.pumpAndSettle();
 
     final uninstallBtn = find.widgetWithText(OutlinedButton, 'Uninstall');
     await tester.ensureVisible(uninstallBtn);
     await tester.tap(uninstallBtn);
     await tester.pumpAndSettle();
     expect(maxConcurrent, 1);
-    expect(order, ['com.niksoftware.snapseed', 'com.picsart.studio']);
+    expect(order, ['com.picsart.studio', 'com.niksoftware.snapseed']);
     expect(hub.updateAvailablePackages, isEmpty);
     expect(
       hub.assistantReport!.largeApps.any((a) => a.package == 'com.picsart.studio'),
@@ -881,77 +890,95 @@ void main() {
     expect(find.text('2 of 2 app(s) uninstalled'), findsOneWidget);
   });
 
-  testWidgets('Collections error, AI error, HubSettings UI & Keystore + x-goog-api-key security', (
+  test('Keystore migration & Gemini x-goog-api-key header via real loopback HTTP', () async {
+    final dir = Directory.systemTemp.createTempSync('hub_sec_test_');
+    try {
+      final legacyFile = File('${dir.path}/hub_data/app-hub-state.json')
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync(jsonEncode({'gemini_api_key': 'AIzaLegacyKey99'}));
+
+      final platform = _FakeHubPlatform(dirPath: dir.path);
+      final hub = HubController(
+        platform: platform,
+        stores: _StubStoreAggregator(),
+      );
+      try {
+        await hub.ensureLoaded();
+        expect(hub.repo.geminiApiKey, 'AIzaLegacyKey99');
+        expect(platform.secrets['gemini_api_key'], 'AIzaLegacyKey99');
+        expect(
+          legacyFile.readAsStringSync(),
+          isNot(contains('AIzaLegacyKey99')),
+        );
+      } finally {
+        hub.dispose();
+      }
+
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      try {
+        Uri? capturedUri;
+        String? capturedHeaderKey;
+        server.listen((req) async {
+          capturedUri = req.requestedUri;
+          capturedHeaderKey = req.headers.value('x-goog-api-key');
+          req.response.statusCode = 200;
+          req.response.headers.contentType = ContentType.json;
+          req.response.write(
+            jsonEncode({
+              'candidates': [
+                {
+                  'content': {
+                    'parts': [
+                      {
+                        'text': jsonEncode({
+                          'summary': 'Try Snapseed',
+                          'search_query': 'photo editor',
+                          'packages': ['com.niksoftware.snapseed'],
+                        }),
+                      },
+                    ],
+                  },
+                },
+              ],
+            }),
+          );
+          await req.response.close();
+        });
+
+        final okIntel = AppIntelligence(
+          stores: _StubStoreAggregator(),
+          geminiEndpoint: Uri.parse('http://127.0.0.1:${server.port}/generate'),
+        );
+        final rec = await okIntel.recommendForNeed(
+          'edit photos',
+          device: const DeviceEnvironment(),
+          fa: false,
+          geminiApiKey: 'AIzaTestSecret123',
+        );
+        expect(rec.usedGemini, isTrue);
+        expect(capturedUri?.queryParameters.containsKey('key'), isFalse);
+        expect(capturedUri.toString(), isNot(contains('AIzaTestSecret123')));
+        expect(capturedHeaderKey, 'AIzaTestSecret123');
+      } finally {
+        await server.close(force: true);
+      }
+    } finally {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('Collections error, AI error & HubSettings UI validation', (
     tester,
   ) async {
-    final dir = Directory.systemTemp.createTempSync('hub_sec_test_');
-    addTearDown(() {
-      if (dir.existsSync()) dir.deleteSync(recursive: true);
-    });
-
-    final legacyFile = File('${dir.path}/hub_data/app-hub-state.json')
-      ..parent.createSync(recursive: true)
-      ..writeAsStringSync(jsonEncode({'gemini_api_key': 'AIzaLegacyKey99'}));
-
-    final platform = _FakeHubPlatform(dirPath: dir.path);
+    final platform = _FakeHubPlatform();
     final stores = _FailingStoreAggregator();
     final hub = HubController(
       platform: platform,
       stores: stores,
       intelligence: AppIntelligence(stores: stores),
+      repository: HubRepository(),
     );
     addTearDown(hub.dispose);
-
-    await hub.ensureLoaded();
-    expect(hub.repo.geminiApiKey, 'AIzaLegacyKey99');
-    expect(platform.secrets['gemini_api_key'], 'AIzaLegacyKey99');
-    expect(legacyFile.readAsStringSync(), isNot(contains('AIzaLegacyKey99')));
-
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    addTearDown(() => server.close(force: true));
-    Uri? capturedUri;
-    String? capturedHeaderKey;
-    server.listen((req) async {
-      capturedUri = req.requestedUri;
-      capturedHeaderKey = req.headers.value('x-goog-api-key');
-      req.response.statusCode = 200;
-      req.response.headers.contentType = ContentType.json;
-      req.response.write(
-        jsonEncode({
-          'candidates': [
-            {
-              'content': {
-                'parts': [
-                  {
-                    'text': jsonEncode({
-                      'summary': 'Try Snapseed',
-                      'search_query': 'photo editor',
-                      'packages': ['com.niksoftware.snapseed'],
-                    }),
-                  },
-                ],
-              },
-            },
-          ],
-        }),
-      );
-      await req.response.close();
-    });
-
-    final okIntel = AppIntelligence(
-      stores: _StubStoreAggregator(),
-      geminiEndpoint: Uri.parse('http://127.0.0.1:${server.port}/generate'),
-    );
-    final rec = await okIntel.recommendForNeed(
-      'edit photos',
-      device: const DeviceEnvironment(),
-      fa: false,
-      geminiApiKey: 'AIzaTestSecret123',
-    );
-    expect(rec.usedGemini, isTrue);
-    expect(capturedUri?.queryParameters.containsKey('key'), isFalse);
-    expect(capturedUri.toString(), isNot(contains('AIzaTestSecret123')));
-    expect(capturedHeaderKey, 'AIzaTestSecret123');
 
     await hub.runAiRecommendation('photo editor', fa: false);
     expect(hub.lastError, contains('offline store error'));
