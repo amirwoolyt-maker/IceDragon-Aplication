@@ -1006,6 +1006,7 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('App Intelligence'));
     await tester.tap(find.text('App Intelligence'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Recommendation failed:'), findsOneWidget);

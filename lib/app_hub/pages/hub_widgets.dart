@@ -213,12 +213,37 @@ Future<void> boostAndLaunchApp(
 Future<AppCategory?> showCreateCategoryDialog(
   BuildContext context,
   HubController hub,
-) async {
-  final s = HubStrings.of(context);
-  final enCtrl = TextEditingController();
-  final faCtrl = TextEditingController();
-  var selectedColor = 0xFF816BFF;
-  const swatches = [
+) => showDialog<AppCategory>(
+  context: context,
+  builder: (_) => _CreateCategoryDialog(hub: hub, s: HubStrings.of(context)),
+);
+
+/// Dialog for creating a new personal collection (#14).
+Future<AppCollection?> showNewCollectionDialog(
+  BuildContext context, {
+  required HubController hub,
+  bool showDescription = false,
+}) => showDialog<AppCollection>(
+  context: context,
+  builder: (_) => _NewCollectionDialog(
+    hub: hub,
+    s: HubStrings.of(context),
+    showDescription: showDescription,
+  ),
+);
+
+class _CreateCategoryDialog extends StatefulWidget {
+  const _CreateCategoryDialog({required this.hub, required this.s});
+
+  final HubController hub;
+  final HubStrings s;
+
+  @override
+  State<_CreateCategoryDialog> createState() => _CreateCategoryDialogState();
+}
+
+class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
+  static const _swatches = [
     0xFF816BFF,
     0xFF00D2FF,
     0xFF00E5A3,
@@ -227,75 +252,155 @@ Future<AppCategory?> showCreateCategoryDialog(
     0xFF56CCF2,
   ];
 
-  final result = await showDialog<AppCategory>(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
-        title: Text(s.newCategory),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: faCtrl,
-              decoration: InputDecoration(labelText: s.categoryNameFa),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: enCtrl,
-              decoration: InputDecoration(labelText: s.categoryNameEn),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              children: [
-                for (final hex in swatches)
-                  InkWell(
-                    onTap: () => setState(() => selectedColor = hex),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: Color(hex),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: selectedColor == hex
-                              ? Colors.white
-                              : Colors.transparent,
-                          width: 2.5,
-                        ),
+  final _enCtrl = TextEditingController();
+  final _faCtrl = TextEditingController();
+  int _selectedColor = 0xFF816BFF;
+
+  @override
+  void dispose() {
+    _enCtrl.dispose();
+    _faCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.s;
+    return AlertDialog(
+      title: Text(s.newCategory),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _faCtrl,
+            decoration: InputDecoration(labelText: s.categoryNameFa),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _enCtrl,
+            decoration: InputDecoration(labelText: s.categoryNameEn),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            children: [
+              for (final hex in _swatches)
+                InkWell(
+                  onTap: () => setState(() => _selectedColor = hex),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Color(hex),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _selectedColor == hex
+                            ? Colors.white
+                            : Colors.transparent,
+                        width: 2.5,
                       ),
                     ),
                   ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(s.cancel),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (enCtrl.text.trim().isEmpty && faCtrl.text.trim().isEmpty) {
-                return;
-              }
-              final created = await hub.createCustomCategory(
-                nameEn: enCtrl.text,
-                nameFa: faCtrl.text,
-                colorValue: selectedColor,
-              );
-              if (ctx.mounted) Navigator.of(ctx).pop(created);
-            },
-            child: Text(s.create),
+                ),
+            ],
           ),
         ],
       ),
-    ),
-  );
-  enCtrl.dispose();
-  faCtrl.dispose();
-  return result;
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(s.cancel),
+        ),
+        FilledButton(
+          onPressed: () async {
+            if (_enCtrl.text.trim().isEmpty && _faCtrl.text.trim().isEmpty) {
+              return;
+            }
+            final created = await widget.hub.createCustomCategory(
+              nameEn: _enCtrl.text,
+              nameFa: _faCtrl.text,
+              colorValue: _selectedColor,
+            );
+            if (mounted) Navigator.of(context).pop(created);
+          },
+          child: Text(s.create),
+        ),
+      ],
+    );
+  }
+}
+
+class _NewCollectionDialog extends StatefulWidget {
+  const _NewCollectionDialog({
+    required this.hub,
+    required this.s,
+    required this.showDescription,
+  });
+
+  final HubController hub;
+  final HubStrings s;
+  final bool showDescription;
+
+  @override
+  State<_NewCollectionDialog> createState() => _NewCollectionDialogState();
+}
+
+class _NewCollectionDialogState extends State<_NewCollectionDialog> {
+  final _nameCtrl = TextEditingController();
+  late final TextEditingController? _descCtrl = widget.showDescription
+      ? TextEditingController()
+      : null;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.s;
+    return AlertDialog(
+      title: Text(s.newCollection),
+      content: widget.showDescription
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _nameCtrl,
+                  decoration: InputDecoration(labelText: s.collectionName),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _descCtrl,
+                  decoration: InputDecoration(labelText: s.collectionDesc),
+                ),
+              ],
+            )
+          : TextField(
+              controller: _nameCtrl,
+              decoration: InputDecoration(labelText: s.collectionName),
+            ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(s.cancel),
+        ),
+        FilledButton(
+          onPressed: () async {
+            if (_nameCtrl.text.trim().isEmpty) return;
+            final col = await widget.hub.createCollection(
+              name: _nameCtrl.text,
+              description: _descCtrl?.text ?? '',
+            );
+            if (mounted) Navigator.of(context).pop(col);
+          },
+          child: Text(s.create),
+        ),
+      ],
+    );
+  }
 }
 
 /// Bottom sheet to assign one or multiple categories to [packages] (#4).
@@ -440,36 +545,7 @@ Future<void> showAddToCollectionSheet(
                 ),
                 TextButton.icon(
                   onPressed: () async {
-                    final ctrl = TextEditingController();
-                    final created = await showDialog<AppCollection>(
-                      context: ctx,
-                      builder: (dCtx) => AlertDialog(
-                        title: Text(s.newCollection),
-                        content: TextField(
-                          controller: ctrl,
-                          decoration: InputDecoration(
-                            labelText: s.collectionName,
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(dCtx).pop(),
-                            child: Text(s.cancel),
-                          ),
-                          FilledButton(
-                            onPressed: () async {
-                              if (ctrl.text.trim().isEmpty) return;
-                              final col = await hub.createCollection(
-                                name: ctrl.text,
-                              );
-                              if (dCtx.mounted) Navigator.of(dCtx).pop(col);
-                            },
-                            child: Text(s.create),
-                          ),
-                        ],
-                      ),
-                    );
-                    ctrl.dispose();
+                    final created = await showNewCollectionDialog(ctx, hub: hub);
                     if (created != null) {
                       for (final e in entries) {
                         await hub.addEntryToCollection(created.id, e);
