@@ -58,6 +58,10 @@ android {
     }
 }
 
+dependencies {
+    implementation("androidx.core:core-ktx:1.13.1")
+}
+
 gradle.taskGraph.whenReady {
     val runningReleaseTask = allTasks.any {
         it.name.contains("Release") &&

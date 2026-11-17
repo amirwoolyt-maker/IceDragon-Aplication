@@ -135,7 +135,17 @@ jobs:
           set -euo pipefail
           flutter pub get
           mkdir -p out
-          flutter build apk --release --split-per-abi
+          if ! flutter build apk --release --split-per-abi --verbose > build_log.txt 2>&1; then
+            tail -n 60 build_log.txt
+            python3 -c "
+            with open('build_log.txt', 'r', errors='replace') as f:
+                lines = [l.strip() for l in f.readlines() if l.strip()]
+            err_lines = [l for l in lines if 'error:' in l.lower() or 'failure:' in l.lower() or 'exception' in l.lower()]
+            summary = ' | '.join(err_lines[-10:]) if err_lines else ' | '.join(lines[-15:])
+            print(f'::error title=Gradle Build Error::{summary}')
+            "
+            exit 1
+          fi
           for abi in arm64-v8a armeabi-v7a x86_64; do
             cp "build/app/outputs/flutter-apk/app-$abi-release.apk" "out/IceDragon-AppHub-$abi.apk"
           done

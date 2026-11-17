@@ -761,7 +761,9 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun openFile(path: String, uriStr: String, mimeType: String): Boolean = runCatching {
-        val targetUri = if (path.isNotBlank() && File(path).exists()) {
+        val targetUri = if (uriStr.isNotBlank() && uriStr.startsWith("content://")) {
+            Uri.parse(uriStr)
+        } else if (path.isNotBlank() && File(path).exists()) {
             val f = File(path)
             runCatching {
                 FileProvider.getUriForFile(this, "$packageName.fileprovider", f)
