@@ -1038,7 +1038,7 @@ class _StorageCleanerPageState extends State<StorageCleanerPage> {
       return Image.file(
         File(file.path),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Icon(
+        errorBuilder: (context, error, stackTrace) => const Icon(
           Icons.image_rounded,
           color: StorageBreakdownChartCard.colorPhotos,
         ),

@@ -9,6 +9,7 @@ import 'package:icedragon_app_hub/app_hub/app_intelligence.dart';
 import 'package:icedragon_app_hub/app_hub/hub_controller.dart';
 import 'package:icedragon_app_hub/app_hub/hub_models.dart';
 import 'package:icedragon_app_hub/app_hub/hub_repository.dart';
+import 'package:icedragon_app_hub/app_hub/hub_strings.dart';
 import 'package:icedragon_app_hub/app_hub/pages/app_compare_page.dart';
 import 'package:icedragon_app_hub/app_hub/pages/app_profile_page.dart';
 import 'package:icedragon_app_hub/app_hub/pages/apps_manager_page.dart';
