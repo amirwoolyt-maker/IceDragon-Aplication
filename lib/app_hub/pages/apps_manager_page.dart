@@ -9,6 +9,7 @@ import '../hub_strings.dart';
 import 'app_compare_page.dart';
 import 'app_profile_page.dart';
 import 'hub_widgets.dart';
+import 'storage_cleaner_page.dart';
 
 /// Installed Apps Manager (#1, #2, #4, #5, #6, #7, #11, #13).
 class AppsManagerPage extends StatefulWidget {
@@ -85,9 +86,9 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
           (a, b) => b.label.toLowerCase().compareTo(a.label.toLowerCase()),
         );
       case AppSortMode.sizeDesc:
-        list.sort((a, b) => b.apkBytes.compareTo(a.apkBytes));
+        list.sort((a, b) => b.totalBytes.compareTo(a.totalBytes));
       case AppSortMode.sizeAsc:
-        list.sort((a, b) => a.apkBytes.compareTo(b.apkBytes));
+        list.sort((a, b) => a.totalBytes.compareTo(b.totalBytes));
       case AppSortMode.updateDesc:
         list.sort((a, b) => b.lastUpdateTime.compareTo(a.lastUpdateTime));
       case AppSortMode.installDesc:
@@ -241,6 +242,18 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                     : const Icon(Icons.auto_fix_high_rounded),
               ),
               IconButton(
+                tooltip: s.manageStorageAction,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => StorageCleanerPage(hub: hub),
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.cleaning_services_rounded,
+                  color: DarkGlassPalette.cyan,
+                ),
+              ),
+              IconButton(
                 tooltip: s.multiSelect,
                 onPressed: () => setState(() {
                   _multiSelect = !_multiSelect;
@@ -258,6 +271,12 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                     setState(() => _showSystem = !_showSystem);
                   } else if (value == 'new_cat') {
                     showCreateCategoryDialog(context, hub);
+                  } else if (value == 'storage') {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => StorageCleanerPage(hub: hub),
+                      ),
+                    );
                   } else if (value == 'refresh') {
                     hub.refreshInstalledApps();
                   }
@@ -267,6 +286,10 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                     value: 'system',
                     checked: _showSystem,
                     child: Text(s.systemApps),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'storage',
+                    child: Text(s.manageStorageAction),
                   ),
                   PopupMenuItem<String>(
                     value: 'new_cat',
@@ -369,6 +392,11 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                   ),
                 ),
               ),
+              if (_query.isEmpty && _selectedCategory == 'all')
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                  child: StorageBreakdownChartCard(hub: hub, compact: true),
+                ),
               // Sorting & app counter bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
@@ -569,9 +597,11 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                                           ),
                                         if (app.totalBytes > 0)
                                           IcePillBadge(
-                                            text: formatStorageBytes(
-                                              app.totalBytes,
-                                            ),
+                                            text: app.cacheBytes > 0
+                                                ? '${formatStorageBytes(app.totalBytes)} (${s.tr("Cache", "کش")} ${formatStorageBytes(app.cacheBytes)})'
+                                                : formatStorageBytes(
+                                                    app.totalBytes,
+                                                  ),
                                             color: DarkGlassPalette.cyan,
                                           ),
                                         if (catText.isNotEmpty)

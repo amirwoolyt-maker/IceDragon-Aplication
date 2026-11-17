@@ -8,6 +8,10 @@
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <!-- Usage Access permission to inspect per-app storage stats (data, cache, app size) -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
     <!-- Media & storage inspection permissions for Storage Breakdown & Media Explorer -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"

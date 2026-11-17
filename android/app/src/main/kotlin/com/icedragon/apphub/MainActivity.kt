@@ -1,6 +1,8 @@
 package com.icedragon.apphub
 
 import android.app.ActivityManager
+import android.app.AppOpsManager
+import android.app.usage.StorageStatsManager
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
@@ -15,7 +17,9 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import android.os.StatFs
+import android.os.storage.StorageManager
 import android.provider.MediaStore
 import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
@@ -136,8 +140,16 @@ class MainActivity : FlutterActivity() {
         ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
     }.getOrNull()
 
-    // Zero-hassle standalone mode: do not force Android Restricted Usage Access.
-    private fun hasUsageAccess(): Boolean = false
+    private fun hasUsageAccess(): Boolean {
+        val appOps = getSystemService(AppOpsManager::class.java) ?: return false
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
+        }
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
 
     private fun deviceInfo(): Map<String, Any> {
         val am = getSystemService(ActivityManager::class.java)
@@ -170,6 +182,13 @@ class MainActivity : FlutterActivity() {
             @Suppress("DEPRECATION")
             pm.getInstalledPackages(PackageManager.GET_PERMISSIONS)
         }
+        val usageOk = hasUsageAccess()
+        val storageStats = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && usageOk) {
+            getSystemService(StorageStatsManager::class.java)
+        } else {
+            null
+        }
+        val user = Process.myUserHandle()
         val result = ArrayList<Map<String, Any>>(packages.size)
         for (pkgInfo in packages) {
             val appInfo = pkgInfo.applicationInfo ?: continue
@@ -208,6 +227,18 @@ class MainActivity : FlutterActivity() {
                 if (f.exists()) apkBytes += f.length()
             }
 
+            var dataBytes = 0L
+            var cacheBytes = 0L
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && storageStats != null) {
+                runCatching {
+                    val uuid = runCatching { appInfo.storageUuid }.getOrNull() ?: StorageManager.UUID_DEFAULT
+                    val stats = storageStats.queryStatsForPackage(uuid, pkgInfo.packageName, user)
+                    if (stats.appBytes > apkBytes) apkBytes = stats.appBytes
+                    dataBytes = stats.dataBytes
+                    cacheBytes = stats.cacheBytes
+                }
+            }
+
             val reqPerms = pkgInfo.requestedPermissions?.filterNotNull() ?: emptyList()
             val permFlags = pkgInfo.requestedPermissionsFlags
             val grantedPerms = ArrayList<String>()
@@ -235,8 +266,8 @@ class MainActivity : FlutterActivity() {
                     "targetSdk" to appInfo.targetSdkVersion,
                     "installer" to installer,
                     "apkBytes" to apkBytes,
-                    "dataBytes" to 0L,
-                    "cacheBytes" to 0L,
+                    "dataBytes" to dataBytes,
+                    "cacheBytes" to cacheBytes,
                     "permissions" to reqPerms,
                     "grantedPermissions" to grantedPerms,
                 ),
@@ -515,12 +546,14 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        // Total apps size
+        // Total apps size (APK + data + cache)
         var appsBytes = 0L
         runCatching {
             for (app in installedAppsDetailed()) {
                 val b = (app["apkBytes"] as? Long) ?: 0L
-                appsBytes += b
+                val d = (app["dataBytes"] as? Long) ?: 0L
+                val c = (app["cacheBytes"] as? Long) ?: 0L
+                appsBytes += (b + d + c)
             }
         }
 

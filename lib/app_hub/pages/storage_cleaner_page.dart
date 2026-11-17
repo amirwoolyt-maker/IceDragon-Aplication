@@ -44,7 +44,7 @@ class StorageBreakdownChartCard extends StatelessWidget {
           freeBytes: hub.device.freeStorageBytes,
           appsBytes: hub.installedApps.fold<int>(
             0,
-            (sum, a) => sum + a.apkBytes,
+            (sum, a) => sum + a.totalBytes,
           ),
         );
 
@@ -81,7 +81,7 @@ class StorageBreakdownChartCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      s.storageBreakdownTitle,
+                      compact ? s.storageSummaryTitle : s.storageBreakdownTitle,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -113,7 +113,7 @@ class StorageBreakdownChartCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: SizedBox(
-              height: 16,
+              height: compact ? 12 : 16,
               child: Row(
                 children: [
                   if (b.videosRatio > 0.005)
@@ -158,90 +158,138 @@ class StorageBreakdownChartCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 14),
 
-          // Categories Breakdown Legend & Quick Navigation Grid
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _LegendChip(
-                color: colorVideos,
-                label: s.categoryVideos,
-                bytes: b.videosBytes,
-                count: b.videosCount,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => StorageCleanerPage(
-                      hub: hub,
-                      initialCategory: StorageViewCategory.videos,
+          if (!compact) ...[
+            const SizedBox(height: 14),
+            // Categories Breakdown Legend & Quick Navigation Grid
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _LegendChip(
+                  color: colorVideos,
+                  label: s.categoryVideos,
+                  bytes: b.videosBytes,
+                  count: b.videosCount,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => StorageCleanerPage(
+                        hub: hub,
+                        initialCategory: StorageViewCategory.videos,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              _LegendChip(
-                color: colorPhotos,
-                label: s.categoryPhotos,
-                bytes: b.imagesBytes,
-                count: b.imagesCount,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => StorageCleanerPage(
-                      hub: hub,
-                      initialCategory: StorageViewCategory.photos,
+                _LegendChip(
+                  color: colorPhotos,
+                  label: s.categoryPhotos,
+                  bytes: b.imagesBytes,
+                  count: b.imagesCount,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => StorageCleanerPage(
+                        hub: hub,
+                        initialCategory: StorageViewCategory.photos,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              _LegendChip(
-                color: colorDocs,
-                label: s.categoryDocuments,
-                bytes: b.documentsBytes,
-                count: b.documentsCount,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => StorageCleanerPage(
-                      hub: hub,
-                      initialCategory: StorageViewCategory.documents,
+                _LegendChip(
+                  color: colorDocs,
+                  label: s.categoryDocuments,
+                  bytes: b.documentsBytes,
+                  count: b.documentsCount,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => StorageCleanerPage(
+                        hub: hub,
+                        initialCategory: StorageViewCategory.documents,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              _LegendChip(
-                color: colorApps,
-                label: s.categoryApps,
-                bytes: b.appsBytes,
-                count: hub.installedApps.length,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => StorageCleanerPage(
-                      hub: hub,
-                      initialCategory: StorageViewCategory.large,
+                _LegendChip(
+                  color: colorApps,
+                  label: s.categoryApps,
+                  bytes: b.appsBytes,
+                  count: hub.installedApps.length,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => StorageCleanerPage(
+                        hub: hub,
+                        initialCategory: StorageViewCategory.large,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              _LegendChip(
-                color: colorAudio,
-                label: s.categoryAudio,
-                bytes: b.audioBytes,
-                count: b.audioCount,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => StorageCleanerPage(
-                      hub: hub,
-                      initialCategory: StorageViewCategory.audio,
+                _LegendChip(
+                  color: colorAudio,
+                  label: s.categoryAudio,
+                  bytes: b.audioBytes,
+                  count: b.audioCount,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => StorageCleanerPage(
+                        hub: hub,
+                        initialCategory: StorageViewCategory.audio,
+                      ),
                     ),
                   ),
                 ),
+                _LegendChip(
+                  color: colorOther,
+                  label: s.categoryOther,
+                  bytes: b.otherBytes,
+                ),
+              ],
+            ),
+          ],
+
+          if (!hub.device.hasUsageAccess) ...[
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => hub.openUsageAccessSettings(),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: DarkGlassPalette.amber.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: DarkGlassPalette.amber.withValues(alpha: 0.38),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      color: DarkGlassPalette.amber,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        s.usageAccessWarning,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: DarkGlassPalette.amber,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      s.enableUsageAccess,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: DarkGlassPalette.amber,
+                        fontWeight: FontWeight.w800,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _LegendChip(
-                color: colorOther,
-                label: s.categoryOther,
-                bytes: b.otherBytes,
-              ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );

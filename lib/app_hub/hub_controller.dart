@@ -575,6 +575,9 @@ class HubController extends ChangeNotifier {
         mimeType: file.mimeType,
       );
 
+  /// Opens Android Settings screen to grant Usage Access permission.
+  Future<bool> openUsageAccessSettings() => platform.openUsageAccessSettings();
+
   /// Runs hybrid App Intelligence recommendation (#16).
   Future<void> runAiRecommendation(String query, {required bool fa}) async {
     runningAi = true;

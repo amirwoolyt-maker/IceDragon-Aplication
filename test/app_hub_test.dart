@@ -1291,6 +1291,12 @@ void main() {
     await tester.tap(find.byIcon(Icons.cleaning_services_rounded));
     await tester.pumpAndSettle();
     expect(find.byType(StorageCleanerPage), findsOneWidget);
+
+    // Also test compact mode
+    await tester.pumpWidget(_wrap(StorageBreakdownChartCard(hub: hub, compact: true)));
+    await tester.pumpAndSettle();
+    expect(find.text(HubStrings.forCode('en').storageSummaryTitle), findsOneWidget);
+    expect(find.text(HubStrings.forCode('en').usageAccessWarning), findsOneWidget);
   });
 
   testWidgets('StorageCleanerPage loads, filters, selects and manages files', (tester) async {

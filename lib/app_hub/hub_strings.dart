@@ -21,7 +21,7 @@ class HubStrings {
   // Navigation tabs
   String get navApps => tr('Apps', 'برنامه‌ها');
   String get navStores => tr('Stores', 'فروشگاه‌ها');
-  String get navAssistant => tr('Assistant', 'دستیار');
+  String get navAssistant => tr('Assistant & Storage', 'دستیار و حافظه');
 
   // Common actions
   String get search => tr('Search', 'جستجو');
@@ -317,8 +317,8 @@ class HubStrings {
   String get downloadLocationTitle =>
       tr('Download Storage Location', 'محل ذخیره فایل‌ها و دانلودها');
   String get downloadLocationSubtitle => tr(
-    'Choose where downloaded apps and packages are saved',
-    'انتخاب مسیر ذخیره‌سازی دانلودها و فایل‌ها',
+    'Choose where downloaded apps and updates are saved (App default, Downloads, or custom)',
+    'انتخاب مسیر ذخیره فایل‌ها و برنامه‌های دانلودی (پیشنهادی برنامه، پوشه دانلودها یا دلخواه)',
   );
   String get downloadLocationRecommended => tr(
     'Recommended (Downloads/IceDragonHub)',
@@ -423,4 +423,17 @@ class HubStrings {
   String get durationLabel => tr('Duration', 'مدت زمان');
   String get filePathLabel => tr('Path', 'مسیر');
   String get fileSizeLabel => tr('Size', 'حجم');
+
+  // Usage access & storage shortcuts
+  String get usageAccessWarning => tr(
+    'Enable Usage Access to calculate exact per-app data & cache (e.g. Chrome 5 GB)',
+    'برای محاسبه دقیق حجم دیتا و کش اپ‌ها (مثل کروم ۵ گیگابایت) دسترسی استفاده را فعال کنید',
+  );
+  String get enableUsageAccess => tr('Enable Access', 'فعال‌سازی دسترسی');
+  String get viewFilesAndVideos =>
+      tr('Files, Videos & Cleaner', 'مشاهده فایل‌ها، ویدیوها و پاکسازی');
+  String get storageSummaryTitle =>
+      tr('Device Storage & Cleaner', 'تحلیل و پاکسازی حافظه گوشی');
+  String get openStorageCleaner =>
+      tr('Open Storage Cleaner', 'ورود به پاکسازی حافظه');
 }
