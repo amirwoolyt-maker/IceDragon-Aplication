@@ -81,7 +81,7 @@ class StorageBreakdownChartCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      compact ? s.storageSummaryTitle : s.storageBreakdownTitle,
+                      s.storageBreakdownTitle,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -242,52 +242,6 @@ class StorageBreakdownChartCard extends StatelessWidget {
                   bytes: b.otherBytes,
                 ),
               ],
-            ),
-          ],
-
-          if (!hub.device.hasUsageAccess) ...[
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () => hub.openUsageAccessSettings(),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: DarkGlassPalette.amber.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: DarkGlassPalette.amber.withValues(alpha: 0.38),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.info_outline_rounded,
-                      color: DarkGlassPalette.amber,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        s.usageAccessWarning,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: DarkGlassPalette.amber,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      s.enableUsageAccess,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: DarkGlassPalette.amber,
-                        fontWeight: FontWeight.w800,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ],
         ],
@@ -830,6 +784,57 @@ class _StorageCleanerPageState extends State<StorageCleanerPage> {
                 ),
               ),
             ),
+
+            if (!widget.hub.device.hasUsageAccess)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                child: InkWell(
+                  onTap: () => widget.hub.openUsageAccessSettings(),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: DarkGlassPalette.amber.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: DarkGlassPalette.amber.withValues(alpha: 0.38),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          color: DarkGlassPalette.amber,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            s.usageAccessWarning,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: DarkGlassPalette.amber,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          s.enableUsageAccess,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: DarkGlassPalette.amber,
+                            fontWeight: FontWeight.w800,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Multi-select header bar
             if (_multiSelect)

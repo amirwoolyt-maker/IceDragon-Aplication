@@ -392,11 +392,6 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                   ),
                 ),
               ),
-              if (_query.isEmpty && _selectedCategory == 'all')
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-                  child: StorageBreakdownChartCard(hub: hub, compact: true),
-                ),
               // Sorting & app counter bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
