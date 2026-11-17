@@ -130,7 +130,9 @@ jobs:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          set -euo pipefail
+          set -eo pipefail
+          KEYSTORE="${KEYSTORE:-}"
+          PASSWORD="${PASSWORD:-}"
           alias="release"
           storepass="$PASSWORD"
 
@@ -138,7 +140,7 @@ jobs:
             echo "Using repository secret release keystore..."
             printf '%s' "$KEYSTORE" | tr -d '\r\n ' | base64 -d > android/release.jks
             if ! cert_info="$(keytool -list -v -keystore android/release.jks -storepass "$storepass" 2>&1)"; then
-              echo "::error::keytool failed to read provided keystore: $cert_info"
+              echo "::error title=Keystore Error::keytool failed to read provided keystore: $cert_info"
               exit 1
             fi
             detected_alias="$(printf '%s\n' "$cert_info" | sed -nE 's/.*Alias name:[[:space:]]*(.+)/\1/p' | head -n 1 | tr -d '\r ')"
@@ -146,16 +148,16 @@ jobs:
               alias="$detected_alias"
             fi
           else
-            echo "::warning::Release keystore secret not found. Creating test signing keystore for CI testing APKs..."
+            echo "::warning title=Keystore::Release keystore secret not found. Creating test signing keystore for CI testing APKs..."
             storepass="IceDragonHubTest2026!"
             alias="release"
-            keytool -genkey -v -keystore android/release.jks -alias "$alias" -keyalg RSA -keysize 2048 -validity 10000 -storepass "$storepass" -keypass "$storepass" -dname "CN=IceDragon AppHub Test, OU=Dev, O=IceDragon, C=IR"
+            keytool -genkeypair -v -keystore android/release.jks -alias "$alias" -keyalg RSA -keysize 2048 -validity 10000 -storepass "$storepass" -keypass "$storepass" -dname "CN=IceDragon AppHub Test, OU=Dev, O=IceDragon, C=IR"
             cert_info="$(keytool -list -v -keystore android/release.jks -storepass "$storepass" -alias "$alias")"
           fi
 
           expected_sha256="$(printf '%s\n' "$cert_info" | sed -nE 's/.*SHA-?256:[[:space:]]*([0-9A-Fa-f:]+).*/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
           if [ "${#expected_sha256}" -ne 64 ]; then
-            echo "::error::Failed to extract SHA-256 certificate fingerprint from keystore."
+            echo "::error title=Keystore Error::Failed to extract SHA-256 certificate fingerprint from keystore (got: '${expected_sha256:-empty}')."
             exit 1
           fi
 
