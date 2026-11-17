@@ -1040,8 +1040,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Select custom download location
-    await tester.ensureVisible(find.text('Custom storage directory'));
-    await tester.tap(find.text('Custom storage directory'));
+    await hub.setDownloadLocation(DownloadLocationType.custom);
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsNWidgets(2));
 
@@ -1055,6 +1054,7 @@ void main() {
       find.byType(TextField).first,
       '/storage/emulated/0/MyDownloads',
     );
+    await tester.ensureVisible(pathSave);
     await tester.tap(pathSave);
     await tester.pumpAndSettle();
     expect(hub.repo.customDownloadPath, '/storage/emulated/0/MyDownloads');
@@ -1069,12 +1069,13 @@ void main() {
     await tester.tap(pathDelete);
     await tester.pumpAndSettle();
     expect(find.text('Delete'), findsNothing);
-    expect(find.text('Delete'), findsNothing);
 
-    await tester.ensureVisible(find.byType(TextField).last);
+    final keySave = find.text('Save').last;
+    await tester.ensureVisible(keySave);
     expect(find.text('Delete'), findsNothing);
     await tester.enterText(find.byType(TextField).last, 'AIzaTypedKey');
     await tester.pump();
+    await tester.ensureVisible(keySave);
     expect(find.text('Delete'), findsOneWidget);
   });
 

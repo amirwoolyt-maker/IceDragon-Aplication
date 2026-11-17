@@ -60,11 +60,22 @@ jobs:
           set -e
           flutter test --no-pub --reporter expanded > test_output.txt 2>&1 || true
           cat test_output.txt
-          while IFS= read -r line; do
-            if echo "$line" | grep -qE "(══╡ EXCEPTION CAUGHT|TestFailure|FAILED|[0-9]+:[0-9]+ \+[0-9]+ -[0-9]+:)"; then
-              echo "::error title=Flutter Test::$line"
-            fi
-          done < test_output.txt
+          python3 -c "
+          with open('test_output.txt', 'r', errors='replace') as f:
+              lines = f.readlines()
+          in_exc = False
+          exc_lines = []
+          for line in lines:
+              if 'EXCEPTION CAUGHT' in line or 'TestFailure' in line:
+                  in_exc = True
+              if in_exc:
+                  exc_lines.append(line.rstrip())
+                  if len(exc_lines) >= 15 or ('════════════════════════════════════════════════════════════════════════════════' in line and len(exc_lines) > 2):
+                      in_exc = False
+                      msg = '%0A'.join(exc_lines)
+                      print(f'::error title=Flutter Test::{msg}')
+                      exc_lines = []
+          "
           if grep -qE "(Some tests failed|Test failed|EXCEPTION CAUGHT)" test_output.txt; then
             exit 1
           fi
