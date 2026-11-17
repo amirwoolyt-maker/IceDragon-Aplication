@@ -463,7 +463,7 @@ void main() {
     tester,
   ) async {
     final platform = _FakeHubPlatform();
-    final repo = HubRepository()
+    final repo = HubRepository(boostBeforeLaunch: false)
       ..updateCache['com.picsart.studio'] = const StoreListing(
         store: StoreId.bazaar,
         packageName: 'com.picsart.studio',
@@ -1040,6 +1040,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Select custom download location
+    await tester.ensureVisible(find.text('Custom storage directory'));
     await tester.tap(find.text('Custom storage directory'));
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsNWidgets(2));

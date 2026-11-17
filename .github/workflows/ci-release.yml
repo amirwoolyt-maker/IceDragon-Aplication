@@ -56,7 +56,18 @@ jobs:
           fi
 
       - name: Flutter test
-        run: flutter test --no-pub --reporter expanded
+        run: |
+          set -e
+          flutter test --no-pub --reporter expanded > test_output.txt 2>&1 || true
+          cat test_output.txt
+          while IFS= read -r line; do
+            if echo "$line" | grep -qE "(══╡ EXCEPTION CAUGHT|TestFailure|FAILED|[0-9]+:[0-9]+ \+[0-9]+ -[0-9]+:)"; then
+              echo "::error title=Flutter Test::$line"
+            fi
+          done < test_output.txt
+          if grep -qE "(Some tests failed|Test failed|EXCEPTION CAUGHT)" test_output.txt; then
+            exit 1
+          fi
 
   build-debug:
     needs: verify
