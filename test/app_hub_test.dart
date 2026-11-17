@@ -998,6 +998,11 @@ void main() {
   testWidgets('Collections error, AI error & HubSettings UI validation', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final platform = _FakeHubPlatform();
     final stores = _FailingStoreAggregator();
     final hub = HubController(
@@ -1042,7 +1047,7 @@ void main() {
     // Select custom download location
     await hub.setDownloadLocation(DownloadLocationType.custom);
     await tester.pumpAndSettle();
-    expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.widgetWithText(TextField, 'Custom storage directory'), findsOneWidget);
 
     final pathSave = find.text('Save').first;
     await tester.ensureVisible(pathSave);
