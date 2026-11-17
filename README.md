@@ -1,14 +1,16 @@
 # IceDragon App Hub
 
-Standalone Flutter + Android application for installed app management, multi-store search (Google Play, Cafe Bazaar, Myket), Phone Assistant diagnostics, App Profile & Compare, Collections, and bilingual (Persian / English) AI recommendations.
+Standalone Flutter + Android application for installed app management, multi-store search (Apple App Store, Google Play, Cafe Bazaar, Myket), Turbine Speed Boost launcher, Phone Assistant diagnostics, App Profile & Compare, Collections, Download storage configuration, and bilingual (Persian / English) AI recommendations.
 
-## Independence from `arman-vpn-mobile`
+## Features & Architecture
 
-- Zero dependencies on `arman-vpn-mobile`, `core/` (Go VPN engine), `CoreService.kt`, or VPN UI screens.
-- Package name: `icedragon_app_hub` (`applicationId = "com.icedragon.apphub"`).
-- **VPN / Proxy boundary**:
-  - Store lookups work directly over HTTPS, or optionally through an external VPN app's local HTTP proxy configured in **Settings** (`external_proxy_address`, e.g. `127.0.0.1:10808`).
-  - Multi-select **+ VPN Bypass / - VPN Bypass** manages the user's persistent local Bypass List and offers one-tap navigation to **Android VPN Settings** (or sharing the list), without embedding a fake VPN service.
+- **100% Standalone**: Completely decoupled from VPN cores, proxies, or tunnel infrastructure.
+- **Package name**: `icedragon_app_hub` (`applicationId = "com.icedragon.apphub"`).
+- **Multi-Store Radar**: Searches Apple App Store (iTunes API), Google Play, Cafe Bazaar, and Myket in parallel.
+- **Turbine Speed Boost**: Animated pre-launch optimization gauge trimming background tasks and optimizing RAM before launching apps.
+- **Smart Sorting & Categorization**: Sort installed apps by Name (A-Z / Z-A), APK Size (Largest / Smallest), Recently Updated, and Install Date.
+- **Download Storage Configuration**: Choose between Recommended (`Downloads/IceDragonHub`), Public Downloads, or a Custom storage directory.
+- **Zero-Permission Ready**: Requires zero nagging permissions (no `PACKAGE_USAGE_STATS` or all-files access needed).
 
 ## Commands (run in a Flutter/Android SDK environment)
 

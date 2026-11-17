@@ -19,9 +19,8 @@ class MultiStoreSearchResponse {
   final Map<StoreId, String> storeErrors;
 }
 
-/// Real multi-store client querying Google Play, Cafe Bazaar, Myket, and
-/// F-Droid (for open-source version histories) in parallel, optionally routing
-/// through IceDragon VPN's local proxy (`127.0.0.1:<port>`).
+/// Real multi-store client querying Apple App Store, Google Play, Cafe Bazaar,
+/// Myket, and F-Droid (for open-source version histories) in parallel.
 class StoreAggregator {
   StoreAggregator({HttpClient Function()? clientFactory})
     : _clientFactory = clientFactory ?? HttpClient.new;
@@ -181,6 +180,23 @@ class StoreAggregator {
           errors[StoreId.myket] = '$e';
         }
       }(),
+      () async {
+        try {
+          final hits = directPackage
+              ? [
+                  ?await fetchAppStoreDetails(
+                    trimmed,
+                    proxyAddress: proxyAddress,
+                  ),
+                ]
+              : await searchAppStore(trimmed, proxyAddress: proxyAddress);
+          reachable[StoreId.appStore] = true;
+          addHits(StoreId.appStore, hits);
+        } catch (e) {
+          reachable[StoreId.appStore] = false;
+          errors[StoreId.appStore] = '$e';
+        }
+      }(),
     ]);
 
     // Rank packages found in multiple stores first while keeping query order.
@@ -231,6 +247,8 @@ class StoreAggregator {
       fetchBazaarDetails(pkg, proxyAddress: proxyAddress)
           .catchError((_) => null),
       fetchMyketDetails(pkg, proxyAddress: proxyAddress)
+          .catchError((_) => null),
+      fetchAppStoreDetails(pkg, proxyAddress: proxyAddress)
           .catchError((_) => null),
     ]);
     for (final listing in results) {
@@ -1368,6 +1386,126 @@ class StoreAggregator {
       deepLinkUrl: 'myket://details?id=$packageName',
       fetchedAtMs: now,
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Apple App Store (iTunes Search & Lookup API)
+  // ---------------------------------------------------------------------------
+
+  /// Searches Apple App Store for iOS applications using public iTunes API.
+  Future<List<StoreListing>> searchAppStore(
+    String query, {
+    String? proxyAddress,
+    int limit = 12,
+  }) async {
+    final client = _openClient(proxyAddress);
+    try {
+      final uri =
+          'https://itunes.apple.com/search?term=${Uri.encodeQueryComponent(query)}&entity=software&limit=$limit';
+      final (code, body) = await _get(client, uri);
+      if (code != 200 || body.trim().isEmpty) return const [];
+      return parseAppStoreResponse(body);
+    } catch (_) {
+      return const [];
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// Fetches an iOS application from Apple App Store by bundle ID or numeric track ID.
+  Future<StoreListing?> fetchAppStoreDetails(
+    String packageOrBundleId, {
+    String? proxyAddress,
+  }) async {
+    final client = _openClient(proxyAddress);
+    try {
+      final isNumeric = RegExp(r'^\d+$').hasMatch(packageOrBundleId);
+      final param = isNumeric ? 'id' : 'bundleId';
+      final uri =
+          'https://itunes.apple.com/lookup?$param=${Uri.encodeQueryComponent(packageOrBundleId)}';
+      final (code, body) = await _get(client, uri);
+      if (code != 200 || body.trim().isEmpty) return null;
+      final hits = parseAppStoreResponse(body);
+      return hits.isNotEmpty ? hits.first : null;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// Parses an iTunes Search / Lookup JSON response into [StoreListing] objects.
+  static List<StoreListing> parseAppStoreResponse(String rawJson) {
+    try {
+      final parsed = jsonDecode(rawJson);
+      if (parsed is! Map<String, Object?>) return const [];
+      final results = parsed['results'];
+      if (results is! List<Object?>) return const [];
+      final out = <StoreListing>[];
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      for (final item in results) {
+        if (item is! Map<String, Object?>) continue;
+        final trackName = item['trackName'] as String? ?? '';
+        final bundleId = item['bundleId'] as String? ?? '';
+        final trackId = item['trackId'];
+        final pkg = bundleId.isNotEmpty
+            ? bundleId
+            : (trackId != null ? 'ios.$trackId' : '');
+        if (pkg.isEmpty && trackName.isEmpty) continue;
+
+        final artist = item['artistName'] as String? ?? '';
+        final icon =
+            (item['artworkUrl512'] ?? item['artworkUrl100']) as String? ?? '';
+        final version = item['version'] as String? ?? '';
+        final sizeRaw = int.tryParse('${item['fileSizeBytes']}') ?? 0;
+        final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+        final formattedPrice =
+            item['formattedPrice'] as String? ??
+            (price == 0 ? 'Free' : '\$$price');
+        final rating = (item['averageUserRating'] as num?)?.toDouble() ?? 0.0;
+        final ratingCount = (item['userRatingCount'] as num?)?.toInt() ?? 0;
+        final desc = item['description'] as String? ?? '';
+        final notes = item['releaseNotes'] as String? ?? '';
+        final genre = item['primaryGenreName'] as String? ?? '';
+        final minOs = item['minimumOsVersion'] as String? ?? '';
+        final trackUrl = item['trackViewUrl'] as String? ?? '';
+        final rawScreens = item['screenshotUrls'];
+        final screenshots = [
+          if (rawScreens is List)
+            for (final s in rawScreens)
+              if (s is String && s.isNotEmpty) s,
+        ];
+
+        out.add(
+          StoreListing(
+            store: StoreId.appStore,
+            packageName: pkg.isNotEmpty ? pkg : trackName,
+            title: trackName.isNotEmpty ? trackName : pkg,
+            developer: artist,
+            iconUrl: icon,
+            versionName: version,
+            sizeBytes: sizeRaw,
+            sizeLabel: sizeRaw > 0 ? formatStorageBytes(sizeRaw) : '',
+            minAndroidLabel: minOs.isNotEmpty ? 'iOS $minOs+' : 'iOS',
+            priceLabel: formattedPrice,
+            isFree: price == 0 || formattedPrice.toLowerCase() == 'free',
+            rating: rating,
+            ratingCount: ratingCount,
+            description: desc,
+            changelog: notes,
+            category: genre,
+            screenshots: screenshots,
+            storeUrl: trackUrl,
+            deepLinkUrl: trackUrl,
+            fetchedAtMs: now,
+          ),
+        );
+      }
+      return out;
+    } catch (_) {
+      return const [];
+    }
   }
 
   // ---------------------------------------------------------------------------

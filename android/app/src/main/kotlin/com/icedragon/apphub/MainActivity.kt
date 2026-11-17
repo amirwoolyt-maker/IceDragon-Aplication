@@ -66,7 +66,6 @@ class MainActivity : FlutterActivity() {
                     inBackground(result) { boostMemory(exclude) }
                 }
                 "openUsageAccessSettings" -> result.success(openUsageAccessSettings())
-                "openVpnSettings" -> result.success(openVpnSettings())
                 "shareText" -> {
                     val text = call.argument<String>("text") ?: ""
                     val subject = call.argument<String>("subject") ?: ""
@@ -313,11 +312,6 @@ class MainActivity : FlutterActivity() {
 
     private fun openUsageAccessSettings(): Boolean = runCatching {
         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        true
-    }.getOrDefault(false)
-
-    private fun openVpnSettings(): Boolean = runCatching {
-        startActivity(Intent(Settings.ACTION_VPN_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         true
     }.getOrDefault(false)
 

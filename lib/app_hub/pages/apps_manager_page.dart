@@ -22,6 +22,7 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
   final _searchCtrl = TextEditingController();
   String _query = '';
   String _selectedCategory = 'all';
+  AppSortMode _sortMode = AppSortMode.nameAsc;
   bool _showSystem = false;
   bool _updatesOnly = false;
   bool _multiSelect = false;
@@ -30,7 +31,15 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => widget.hub.ensureLoaded());
+    Future.microtask(() {
+      widget.hub.ensureLoaded().then((_) {
+        if (mounted) {
+          setState(() {
+            _sortMode = widget.hub.repo.defaultSortMode;
+          });
+        }
+      });
+    });
   }
 
   @override
@@ -46,7 +55,7 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
   ) {
     final q = _query.trim().toLowerCase();
     final catMap = {for (final c in hub.repo.categories) c.id: c};
-    return [
+    final list = [
       for (final app in hub.installedApps)
         if ((_showSystem || !app.system) &&
             (!_updatesOnly || updatePkgs.contains(app.package)) &&
@@ -63,6 +72,28 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                 })))
           app,
     ];
+
+    switch (_sortMode) {
+      case AppSortMode.nameAsc:
+        list.sort(
+          (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()),
+        );
+      case AppSortMode.nameDesc:
+        list.sort(
+          (a, b) => b.label.toLowerCase().compareTo(a.label.toLowerCase()),
+        );
+      case AppSortMode.sizeDesc:
+        list.sort((a, b) => b.apkBytes.compareTo(a.apkBytes));
+      case AppSortMode.sizeAsc:
+        list.sort((a, b) => a.apkBytes.compareTo(b.apkBytes));
+      case AppSortMode.updateDesc:
+        list.sort((a, b) => b.lastUpdateTime.compareTo(a.lastUpdateTime));
+      case AppSortMode.installDesc:
+        list.sort((a, b) => b.firstInstallTime.compareTo(a.firstInstallTime));
+      case AppSortMode.installAsc:
+        list.sort((a, b) => a.firstInstallTime.compareTo(b.firstInstallTime));
+    }
+    return list;
   }
 
   Future<void> _batchUninstall(
@@ -100,34 +131,6 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
         ),
       );
     }
-  }
-
-  Future<void> _batchVpnBypass(HubStrings s, {required bool bypass}) async {
-    final count = _selected.length;
-    final ok = await widget.hub.setVpnBypassForPackages(
-      _selected,
-      bypass: bypass,
-    );
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    messenger?.hideCurrentSnackBar();
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? (bypass ? s.addedToBypass : s.removedFromBypass)
-              : s.bypassListSavedCount(count, bypass),
-        ),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-        action: ok
-            ? null
-            : SnackBarAction(
-                label: s.openVpnSettingsLabel,
-                onPressed: widget.hub.openVpnSettings,
-              ),
-      ),
-    );
   }
 
   void _compareSelected(HubStrings s, List<InstalledAppDetail> visible) {
@@ -362,6 +365,90 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                       ),
                     ],
                   ),
+                ),
+              ),
+              // Sorting & app counter bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
+                child: Row(
+                  children: [
+                    Text(
+                      s.appsFoundCount(visible.length),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: DarkGlassPalette.muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    PopupMenuButton<AppSortMode>(
+                      tooltip: s.sortBy,
+                      onSelected: (mode) {
+                        setState(() => _sortMode = mode);
+                        widget.hub.setDefaultSortMode(mode);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (dark
+                                  ? Colors.white
+                                  : DarkGlassPalette.purple)
+                              .withValues(alpha: dark ? 0.08 : 0.09),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: (dark
+                                    ? Colors.white
+                                    : DarkGlassPalette.purple)
+                                .withValues(alpha: 0.16),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.sort_rounded,
+                              size: 16,
+                              color: dark
+                                  ? DarkGlassPalette.cyan
+                                  : theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              _sortMode.label(fa: s.isFa),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: dark
+                                    ? Colors.white
+                                    : theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      itemBuilder: (ctx) => [
+                        for (final mode in AppSortMode.values)
+                          PopupMenuItem<AppSortMode>(
+                            value: mode,
+                            child: Row(
+                              children: [
+                                if (_sortMode == mode)
+                                  const Icon(
+                                    Icons.check_rounded,
+                                    size: 16,
+                                    color: DarkGlassPalette.cyan,
+                                  )
+                                else
+                                  const SizedBox(width: 16),
+                                const SizedBox(width: 8),
+                                Text(mode.label(fa: s.isFa)),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               if (hub.loadingApps && hub.installedApps.isEmpty)
@@ -683,20 +770,6 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
                             ),
                             const SizedBox(width: 6),
                           ],
-                          OutlinedButton.icon(
-                            onPressed: () =>
-                                _batchVpnBypass(s, bypass: true),
-                            icon: const Icon(Icons.alt_route_rounded, size: 17),
-                            label: Text(s.vpnBypassAdd),
-                          ),
-                          const SizedBox(width: 6),
-                          OutlinedButton.icon(
-                            onPressed: () =>
-                                _batchVpnBypass(s, bypass: false),
-                            icon: const Icon(Icons.vpn_lock_rounded, size: 17),
-                            label: Text(s.vpnBypassRemove),
-                          ),
-                          const SizedBox(width: 6),
                           OutlinedButton.icon(
                             onPressed: () => _batchUninstall(s, visible),
                             icon: const Icon(

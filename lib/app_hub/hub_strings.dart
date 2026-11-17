@@ -54,6 +54,7 @@ class HubStrings {
   String get storeGooglePlay => tr('Google Play', 'گوگل‌پلی');
   String get storeBazaar => tr('Cafe Bazaar', 'کافه‌بازار');
   String get storeMyket => tr('Myket', 'مایکت');
+  String get storeAppStore => tr('App Store (Apple)', 'اپ استور (اپل)');
   String get storeFdroid => tr('F-Droid', 'اف‌دروید');
 
   // Apps Manager (#1, #2, #4, #5, #6, #7)
@@ -75,7 +76,6 @@ class HubStrings {
       tr('Updated categories for $n apps', 'دسته‌بندی $n برنامه بروزرسانی شد');
   String get assignCategories => tr('Assign categories', 'تعیین دسته‌بندی');
   String get addToCollection => tr('Add to collection', 'افزودن به مجموعه');
-  String get vpnRouting => tr('VPN routing', 'مسیریابی VPN');
   String get batchUninstall => tr('Uninstall', 'حذف گروهی');
   String get appSettings => tr('App settings', 'تنظیمات برنامه');
   String get uninstall => tr('Uninstall', 'حذف برنامه');
@@ -92,13 +92,30 @@ class HubStrings {
       tr('$n updates found', '$n آپدیت جدید پیدا شد');
   String get pickTwoToCompare =>
       tr('Select exactly 2 apps to compare', 'برای مقایسه دقیقاً ۲ برنامه را انتخاب کنید');
-  String get addedToBypass =>
-      tr('Added selected apps to VPN bypass', 'برنامه‌ها به لیست عبور مستقیم VPN اضافه شدند');
-  String get removedFromBypass =>
-      tr('Removed selected apps from VPN bypass', 'برنامه‌ها از لیست عبور مستقیم VPN حذف شدند');
+
+  // Sorting
+  String get sortBy => tr('Sort by', 'مرتب‌سازی');
+  String get sortOrder => tr('Order', 'ترتیب');
+  String get sortByNameAsc => tr('Name (A-Z)', 'نام (الف - ی)');
+  String get sortByNameDesc => tr('Name (Z-A)', 'نام (ی - الف)');
+  String get sortBySizeDesc => tr('Largest Size', 'بزرگ‌ترین حجم');
+  String get sortBySizeAsc => tr('Smallest Size', 'کمترین حجم');
+  String get sortByUpdateDesc => tr('Recently Updated', 'تازه‌ترین به‌روزرسانی');
+  String get sortByInstallDesc => tr('Recently Installed', 'تازه‌ترین نصب');
+  String get sortByInstallAsc => tr('Oldest Installed', 'قدیمی‌ترین نصب');
+  String appsFoundCount(int n) => tr('$n apps found', '$n برنامه پیدا شد');
 
   // Speed Boost (#5)
   String get speedBoostTitle => tr('Speed Boost', 'اسپید بوست موبایل');
+  String get speedBoostActiveTitle => tr('Turbine Speed Boost', 'اسپید بوست توربو');
+  String get speedBoostOptimizingRam =>
+      tr('Freeing background RAM & tasks…', 'آزادسازی رم و بستن برنامه‌های زائد…');
+  String get speedBoostAllocatingCpu =>
+      tr('Optimizing CPU priority…', 'تنظیم اولویت پردازنده برای اجرای روان…');
+  String get speedBoostPreparingExecution =>
+      tr('Preparing execution buffer…', 'آماده‌سازی بافر اجرای سریع برنامه…');
+  String get speedBoostLaunchingTarget =>
+      tr('Boost complete! Launching app…', 'بوست با موفقیت انجام شد! در حال اجرا…');
   String get speedBoostRunning => tr(
     'Optimizing available RAM and launching…',
     'در حال بررسی رم و اجرای برنامه…',
@@ -126,13 +143,11 @@ class HubStrings {
     'Try "photo editor" or "برنامه ویرایش عکس"…',
     'مثلاً بنویسید «برنامه ویرایش عکس» یا «photo editor»…',
   );
-  String get searchStoresButton => tr('Search 3 stores', 'جستجو در ۳ فروشگاه');
+  String get searchStoresButton => tr('Search across stores', 'جستجو در فروشگاه‌ها');
   String get searchingStores => tr(
-    'Querying Myket, Cafe Bazaar & Google Play…',
-    'در حال جستجوی همزمان در مایکت، بازار و گوگل‌پلی…',
+    'Querying Apple App Store, Google Play, Bazaar & Myket…',
+    'در حال جستجوی همزمان در اپ‌استور، مایکت، بازار و گوگل‌پلی…',
   );
-  String get viaVpnActive =>
-      tr('Using IceDragon VPN tunnel', 'اتصال از طریق تونل VPN');
   String get sortRelevance => tr('Relevance', 'مرتبط‌ترین');
   String get sortPopularity => tr('Popularity', 'محبوبیت');
   String get sortSizeAsc => tr('Smallest size', 'کمترین حجم');
@@ -291,10 +306,6 @@ class HubStrings {
     'Speed Boost when launching apps',
     'اجرای اسپید بوست هنگام باز کردن برنامه‌ها',
   );
-  String get useVpnForStoresLabel => tr(
-    'Route store checks through configured VPN proxy',
-    'عبور جستجوی فروشگاه‌ها از پروکسی VPN در صورت تنظیم',
-  );
   String get quickLanguageLabel => tr('App Language', 'زبان اپلیکیشن');
   String get appTitle => tr('IceDragon App Hub', 'مدیریت هوشمند آیس‌دراگون');
   String get navSettings => tr('Settings', 'تنظیمات');
@@ -302,34 +313,29 @@ class HubStrings {
   String get themeDark => tr('Dark Glass', 'شیشه‌ای تیره');
   String get themeLight => tr('Light', 'روشن');
   String get themeSystem => tr('System', 'سیستم');
-  String get externalProxyLabel =>
-      tr('External VPN / Proxy (host:port)', 'پروکسی VPN خارجی (host:port)');
-  String get externalProxyHint => tr(
-    'Optional, e.g. 127.0.0.1:10808 when connected to an external VPN',
-    'اختیاری، مثلاً 127.0.0.1:10808 در زمان اتصال وی‌پی‌ان جداگانه',
+  // Download Storage Location
+  String get downloadLocationTitle =>
+      tr('Download Storage Location', 'محل ذخیره فایل‌ها و دانلودها');
+  String get downloadLocationSubtitle => tr(
+    'Choose where downloaded apps and packages are saved',
+    'انتخاب مسیر ذخیره‌سازی دانلودها و فایل‌ها',
   );
-  String get externalProxyInvalid => tr(
-    'Enter host:port (port 1–65535) or leave empty',
-    'آدرس معتبر host:port وارد کنید یا خالی بگذارید',
+  String get downloadLocationRecommended => tr(
+    'Recommended (Downloads/IceDragonHub)',
+    'پیشنهادی برنامه (Downloads/IceDragonHub)',
   );
-  String get openVpnSettingsLabel =>
-      tr('Android VPN Settings', 'تنظیمات VPN اندروید');
-  String get vpnStandaloneInfo => tr(
-    'Standalone App Hub has no built-in VPN core. Use Android VPN Settings or configure split-tunneling in your VPN app and optionally enter its local proxy below.',
-    'این نسخه مستقل فاقد هسته VPN داخلی است. می‌توانید از تنظیمات VPN اندروید یا اپ وی‌پی‌ان خود استفاده کرده و در صورت نیاز پروکسی محلی آن را وارد کنید.',
+  String get downloadLocationPublic =>
+      tr('Public Downloads folder', 'پوشه عمومی دانلودهای سیستم');
+  String get downloadLocationCustom =>
+      tr('Custom storage directory', 'مسیر سفارشی دلخواه');
+  String get customDownloadPathHint =>
+      tr('e.g. /storage/emulated/0/MyApps', 'مثلاً: /storage/emulated/0/MyApps');
+  String get customPathInvalid => tr(
+    'Please enter a valid directory path',
+    'لطفاً یک مسیر معتبر پوشه وارد کنید',
   );
-  String bypassListSavedCount(int n, bool added) => tr(
-    added
-        ? 'Saved $n app(s) to local VPN bypass list (apply in your VPN app)'
-        : 'Removed $n app(s) from local VPN bypass list',
-    added
-        ? '$n برنامه در فهرست محلی عبور مستقیم ذخیره شد (اعمال نهایی از طریق اپ VPN)'
-        : '$n برنامه از فهرست محلی عبور مستقیم حذف شد',
-  );
-  String savedBypassListTitle(int n) => tr(
-    'Saved VPN Bypass List ($n)',
-    'فهرست ذخیره‌شده عبور مستقیم VPN ($n)',
-  );
+  String get downloadPathSaved =>
+      tr('Download location saved', 'مسیر دانلود با موفقیت ذخیره شد');
 
   // Honest feedback & status strings
   String appLaunchFailed(String name) => tr(
@@ -346,8 +352,6 @@ class HubStrings {
     '$removed of $total app(s) uninstalled',
     '$removed از $total برنامه حذف شد',
   );
-  String get vpnBypassAdd => tr('+ VPN Bypass', 'افزودن به عبور مستقیم');
-  String get vpnBypassRemove => tr('- VPN Bypass', 'حذف از عبور مستقیم');
   String get importCollectionInvalid => tr(
     'Invalid or corrupted collection code. Paste a valid IceDragon code or JSON.',
     'کد یا متن مجموعه نامعتبر است. لطفاً یک کد یا JSON معتبر وارد کنید.',

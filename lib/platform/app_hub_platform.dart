@@ -128,17 +128,6 @@ class AppHubPlatformChannel {
     }
   }
 
-  /// Opens Android's system VPN settings so users can manage any external VPN app.
-  static Future<bool> openVpnSettings() async {
-    try {
-      return await _channel.invokeMethod<bool>('openVpnSettings') ?? false;
-    } on MissingPluginException {
-      return false;
-    } on PlatformException {
-      return false;
-    }
-  }
-
   /// Opens the Android share sheet for [text].
   static Future<bool> shareText(String text, {String subject = ''}) async {
     try {

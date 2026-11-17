@@ -19,7 +19,6 @@ abstract class HubPlatform {
   Future<bool> launchApp(String package);
   Future<BoostReport?> boostMemory(String launchedPackage);
   Future<bool> openUsageAccessSettings();
-  Future<bool> openVpnSettings();
   Future<bool> shareText(String text, {String subject = ''});
   Future<bool> openStore(
     String package,
@@ -80,9 +79,6 @@ class AndroidHubPlatform implements HubPlatform {
       AppHubPlatformChannel.openUsageAccessSettings();
 
   @override
-  Future<bool> openVpnSettings() => AppHubPlatformChannel.openVpnSettings();
-
-  @override
   Future<bool> shareText(String text, {String subject = ''}) =>
       AppHubPlatformChannel.shareText(text, subject: subject);
 
@@ -124,8 +120,6 @@ class HubController extends ChangeNotifier {
     StoreAggregator? stores,
     AppIntelligence? intelligence,
     HubRepository? repository,
-    this.externalProxyResolver,
-    this.onApplyVpnBypass,
   }) : platform = platform ?? const AndroidHubPlatform(),
        stores = stores ?? StoreAggregator(),
        _repo = repository {
@@ -135,13 +129,6 @@ class HubController extends ChangeNotifier {
   final HubPlatform platform;
   final StoreAggregator stores;
   late final AppIntelligence intelligence;
-
-  /// Optional callback when an external VPN service supplies an HTTP proxy.
-  final String? Function()? externalProxyResolver;
-
-  /// Optional callback when an external VPN core enforces per-app bypass rules.
-  final Future<bool> Function(Set<String> packages, {required bool bypass})?
-      onApplyVpnBypass;
 
   HubRepository? _repo;
   HubRepository get repo => _repo ??= HubRepository();
@@ -168,14 +155,8 @@ class HubController extends ChangeNotifier {
   AssistantReport? assistantReport;
   String lastError = '';
 
-  /// Active local HTTP proxy for store queries when configured and enabled.
-  String? get activeProxyAddress {
-    if (!repo.useVpnProxyForStores) return null;
-    final resolved = externalProxyResolver?.call()?.trim();
-    if (resolved != null && isValidProxyHostPort(resolved)) return resolved;
-    final manual = repo.externalProxyAddress.trim();
-    return isValidProxyHostPort(manual) ? manual : null;
-  }
+  /// Direct network connection for store queries (VPN removed).
+  String? get activeProxyAddress => null;
 
   Future<void> ensureLoaded() async {
     if (_loaded) return;
@@ -584,57 +565,29 @@ class HubController extends ChangeNotifier {
     return true;
   }
 
-  // Standalone VPN Bypass plan & external VPN settings integration (#2 & #3)
-  Future<bool> setVpnBypassForPackages(
-    Set<String> packages, {
-    required bool bypass,
-  }) async {
-    if (bypass) {
-      repo.vpnBypassPackages.addAll(packages);
-    } else {
-      repo.vpnBypassPackages.removeAll(packages);
-    }
-    notifyListeners();
-    await repo.save();
-
-    final handler = onApplyVpnBypass;
-    if (handler != null) {
-      return handler(packages, bypass: bypass);
-    }
-    return false;
-  }
-
-  Future<void> clearVpnBypassPlan() async {
-    if (repo.vpnBypassPackages.isEmpty) return;
-    repo.vpnBypassPackages.clear();
-    notifyListeners();
-    await repo.save();
-  }
-
-  Future<bool> openVpnSettings() => platform.openVpnSettings();
-
-  // Hub preferences
+  // Hub preferences & Download storage configuration
   Future<void> setBoostBeforeLaunch(bool value) async {
     repo.boostBeforeLaunch = value;
     notifyListeners();
     await repo.save();
   }
 
-  Future<void> setUseVpnProxyForStores(bool value) async {
-    repo.useVpnProxyForStores = value;
+  Future<void> setDownloadLocation(
+    DownloadLocationType type, [
+    String customPath = '',
+  ]) async {
+    repo.downloadLocation = type;
+    if (customPath.trim().isNotEmpty) {
+      repo.customDownloadPath = customPath.trim();
+    }
     notifyListeners();
     await repo.save();
   }
 
-  Future<bool> setExternalProxyAddress(String raw) async {
-    final trimmed = raw.trim();
-    if (trimmed.isNotEmpty && !isValidProxyHostPort(trimmed)) {
-      return false;
-    }
-    repo.externalProxyAddress = trimmed;
+  Future<void> setDefaultSortMode(AppSortMode mode) async {
+    repo.defaultSortMode = mode;
     notifyListeners();
     await repo.save();
-    return true;
   }
 
   Future<void> setGeminiApiKey(String key) async {

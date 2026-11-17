@@ -6,6 +6,7 @@ enum StoreId {
   googlePlay('googlePlay', 'Google Play', 'گوگل‌پلی'),
   bazaar('bazaar', 'Cafe Bazaar', 'کافه‌بازار'),
   myket('myket', 'Myket', 'مایکت'),
+  appStore('appStore', 'App Store (Apple)', 'اپ استور (اپل)'),
   fdroid('fdroid', 'F-Droid', 'اف‌دروید');
 
   const StoreId(this.key, this.nameEn, this.nameFa);
@@ -21,6 +22,62 @@ enum StoreId {
       if (s.key == key) return s;
     }
     return null;
+  }
+}
+
+/// Ordering options for installed apps in [AppsManagerPage].
+enum AppSortMode {
+  nameAsc('nameAsc', 'Name (A-Z)', 'نام (الف - ی)'),
+  nameDesc('nameDesc', 'Name (Z-A)', 'نام (ی - الف)'),
+  sizeDesc('sizeDesc', 'Largest APK', 'بیشترین حجم'),
+  sizeAsc('sizeAsc', 'Smallest APK', 'کمترین حجم'),
+  updateDesc('updateDesc', 'Recently Updated', 'تازه‌ترین به‌روزرسانی'),
+  installDesc('installDesc', 'Recently Installed', 'تازه‌ترین نصب'),
+  installAsc('installAsc', 'Oldest Installed', 'قدیمی‌ترین نصب');
+
+  const AppSortMode(this.key, this.nameEn, this.nameFa);
+
+  final String key;
+  final String nameEn;
+  final String nameFa;
+
+  String label({required bool fa}) => fa ? nameFa : nameEn;
+
+  static AppSortMode fromKey(String? key) {
+    for (final m in values) {
+      if (m.key == key) return m;
+    }
+    return AppSortMode.nameAsc;
+  }
+}
+
+/// User preference for download file storage location.
+enum DownloadLocationType {
+  recommended(
+    'recommended',
+    'App Recommended (Downloads/IceDragonHub)',
+    'پیشنهادی برنامه (Downloads/IceDragonHub)',
+  ),
+  publicDownloads(
+    'publicDownloads',
+    'Standard Downloads Directory',
+    'پوشه عمومی دانلودهای سیستم',
+  ),
+  custom('custom', 'Custom Directory', 'مسیر سفارشی دلخواه');
+
+  const DownloadLocationType(this.key, this.nameEn, this.nameFa);
+
+  final String key;
+  final String nameEn;
+  final String nameFa;
+
+  String label({required bool fa}) => fa ? nameFa : nameEn;
+
+  static DownloadLocationType fromKey(String? key) {
+    for (final t in values) {
+      if (t.key == key) return t;
+    }
+    return DownloadLocationType.recommended;
   }
 }
 

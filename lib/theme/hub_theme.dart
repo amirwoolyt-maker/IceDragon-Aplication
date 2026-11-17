@@ -2,31 +2,33 @@ import 'package:flutter/material.dart';
 
 /// IceDragon Glass palette for Dark Midnight Ice & Light Frosted Ice themes.
 abstract final class DarkGlassPalette {
-  static const bgTop = Color(0xFF070B1A);
-  static const bgMid = Color(0xFF0C1430);
-  static const bgBottom = Color(0xFF050814);
+  static const bgTop = Color(0xFF070C1E);
+  static const bgMid = Color(0xFF0B1432);
+  static const bgBottom = Color(0xFF050914);
 
-  static const purple = Color(0xFF8470FF);
-  static const cyan = Color(0xFF2CE6FF);
-  static const mint = Color(0xFF00E5A3);
-  static const amber = Color(0xFFFFB547);
-  static const coral = Color(0xFFFF5C7A);
+  // Harmonious matching palette: Ice Cyber & Arctic Aurora
+  static const cyan = Color(0xFF00E5FF);
+  static const purple = Color(0xFF8B5CF6);
+  static const mint = Color(0xFF00F5A0);
+  static const amber = Color(0xFFFFB800);
+  static const coral = Color(0xFFFF477E);
+  static const blue = Color(0xFF3B82F6);
 
   static const text = Colors.white;
-  static const muted = Color(0xFF9EAAD0);
+  static const muted = Color(0xFF94A3B8);
 
-  static const glassFill = Color(0x14FFFFFF);
-  static const glassFillElevated = Color(0x1EFFFFFF);
-  static const glassBorder = Color(0x28FFFFFF);
-  static const glassBorderBright = Color(0x42FFFFFF);
+  static const glassFill = Color(0x18FFFFFF);
+  static const glassFillElevated = Color(0x24FFFFFF);
+  static const glassBorder = Color(0x3300E5FF);
+  static const glassBorderBright = Color(0x5900E5FF);
 
-  static const cardSurface = Color(0xFF101730);
-  static const cardBorder = Color(0xFF24315B);
+  static const cardSurface = Color(0xFF0D152B);
+  static const cardBorder = Color(0xFF1E2D56);
 
-  static const lightBgTop = Color(0xFFEAF2FF);
-  static const lightBgBottom = Color(0xFFF6F9FF);
-  static const lightCard = Color(0xECFFFFFF);
-  static const lightBorder = Color(0xFFD6E2F5);
+  static const lightBgTop = Color(0xFFEDF4FE);
+  static const lightBgBottom = Color(0xFFF7FAFC);
+  static const lightCard = Color(0xF4FFFFFF);
+  static const lightBorder = Color(0xFFD4E2F4);
 }
 
 ThemeData _finishGlassTheme(
@@ -294,7 +296,7 @@ ThemeData buildLightGlassTheme([String? fontFamily]) {
   );
 }
 
-/// Atmospheric IceDragon frost gradient & subtle radial glow backdrop.
+/// Atmospheric IceDragon frost gradient & multi-orb cyber aurora backdrop.
 class IceDragonBackdrop extends StatelessWidget {
   const IceDragonBackdrop({super.key, required this.child});
 
@@ -308,50 +310,76 @@ class IceDragonBackdrop extends StatelessWidget {
       children: [
         IgnorePointer(
           child: RepaintBoundary(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: dark
-                      ? const [
-                          Color(0xFF09112A),
-                          DarkGlassPalette.bgTop,
-                          DarkGlassPalette.bgBottom,
-                        ]
-                      : const [
-                          DarkGlassPalette.lightBgTop,
-                          DarkGlassPalette.lightBgBottom,
-                          Color(0xFFEDEFFF),
-                        ],
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: dark
+                          ? const [
+                              Color(0xFF060B1A),
+                              DarkGlassPalette.bgTop,
+                              DarkGlassPalette.bgMid,
+                              DarkGlassPalette.bgBottom,
+                            ]
+                          : const [
+                              DarkGlassPalette.lightBgTop,
+                              DarkGlassPalette.lightBgBottom,
+                              Color(0xFFE2EDFC),
+                            ],
+                    ),
+                  ),
                 ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: -90,
-                    right: -60,
-                    child: _AmbientGlow(
-                      size: 260,
-                      color: (dark
-                              ? DarkGlassPalette.cyan
-                              : const Color(0xFF38BDF8))
-                          .withValues(alpha: dark ? 0.14 : 0.18),
-                    ),
+                // Subtle high-tech frost lattice mesh to eliminate empty-screen feel
+                CustomPaint(
+                  painter: _CyberFrostLatticePainter(
+                    dotColor: (dark ? Colors.white : const Color(0xFF1E3A8A))
+                        .withValues(alpha: dark ? 0.045 : 0.035),
                   ),
-                  Positioned(
-                    bottom: 80,
-                    left: -80,
-                    child: _AmbientGlow(
-                      size: 240,
-                      color: (dark
-                              ? DarkGlassPalette.purple
-                              : const Color(0xFF7C6BFF))
-                          .withValues(alpha: dark ? 0.15 : 0.12),
-                    ),
+                ),
+                // Multi-orb harmonious aurora lighting
+                Positioned(
+                  top: -80,
+                  right: -50,
+                  child: _AmbientGlow(
+                    size: 300,
+                    color: (dark ? DarkGlassPalette.cyan : const Color(0xFF00B4D8))
+                        .withValues(alpha: dark ? 0.16 : 0.15),
                   ),
-                ],
-              ),
+                ),
+                Positioned(
+                  top: 180,
+                  left: -70,
+                  child: _AmbientGlow(
+                    size: 260,
+                    color: (dark
+                            ? DarkGlassPalette.purple
+                            : const Color(0xFF7C6BFF))
+                        .withValues(alpha: dark ? 0.14 : 0.12),
+                  ),
+                ),
+                Positioned(
+                  bottom: 120,
+                  right: -60,
+                  child: _AmbientGlow(
+                    size: 240,
+                    color: (dark ? DarkGlassPalette.mint : const Color(0xFF00C988))
+                        .withValues(alpha: dark ? 0.12 : 0.10),
+                  ),
+                ),
+                Positioned(
+                  bottom: -60,
+                  left: 20,
+                  child: _AmbientGlow(
+                    size: 280,
+                    color: (dark ? const Color(0xFF1E3A8A) : const Color(0xFF93C5FD))
+                        .withValues(alpha: dark ? 0.22 : 0.14),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -359,6 +387,30 @@ class IceDragonBackdrop extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Paints a faint, elegant cyber-frost dot lattice for futuristic depth.
+class _CyberFrostLatticePainter extends CustomPainter {
+  const _CyberFrostLatticePainter({required this.dotColor});
+
+  final Color dotColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = dotColor
+      ..style = PaintingStyle.fill;
+    const step = 32.0;
+    for (double y = 16; y < size.height; y += step) {
+      for (double x = 16; x < size.width; x += step) {
+        canvas.drawCircle(Offset(x, y), 1.0, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CyberFrostLatticePainter oldDelegate) =>
+      oldDelegate.dotColor != dotColor;
 }
 
 class _AmbientGlow extends StatelessWidget {
@@ -424,15 +476,15 @@ class GlassCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            accentColor!.withValues(alpha: dark ? 0.18 : 0.11),
-            dark ? const Color(0x14FFFFFF) : Colors.white.withValues(alpha: 0.94),
+            accentColor!.withValues(alpha: dark ? 0.20 : 0.12),
+            dark ? const Color(0x16FFFFFF) : Colors.white.withValues(alpha: 0.95),
           ],
         );
       } else if (dark) {
         gradient = const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0x1BFFFFFF), Color(0x0BFFFFFF)],
+          colors: [Color(0x22FFFFFF), Color(0x0CFFFFFF)],
         );
       }
     }
@@ -444,14 +496,20 @@ class GlassCard extends StatelessWidget {
         boxShadow: dark
             ? [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.24),
-                  blurRadius: 18,
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
+                if (accentColor != null)
+                  BoxShadow(
+                    color: accentColor!.withValues(alpha: 0.10),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
               ]
             : [
                 BoxShadow(
-                  color: const Color(0xFF283A7A).withValues(alpha: 0.07),
+                  color: const Color(0xFF283A7A).withValues(alpha: 0.08),
                   blurRadius: 18,
                   offset: const Offset(0, 7),
                 ),
@@ -461,7 +519,7 @@ class GlassCard extends StatelessWidget {
         color: gradient != null ? Colors.transparent : bg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
-          side: BorderSide(color: border),
+          side: BorderSide(color: border, width: 1.1),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(

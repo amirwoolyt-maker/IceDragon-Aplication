@@ -3,8 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-/// Standalone application UI preferences (language and theme mode) stored
-/// independently from any VPN core.
+/// Standalone application UI preferences (language and theme mode).
 class HubAppSettings extends ChangeNotifier {
   HubAppSettings({this.file});
 

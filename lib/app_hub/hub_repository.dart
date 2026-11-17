@@ -5,8 +5,7 @@ import 'hub_models.dart';
 
 /// Persists standalone App Hub state (`app-hub-state.json`):
 /// custom categories, multi-category assignments, collections, cached store
-/// updates, observed version history, Speed Boost preference, local VPN bypass
-/// plan, optional external proxy, and transient Gemini migration handling.
+/// updates, observed version history, Speed Boost preference, and download storage settings.
 class HubRepository {
   HubRepository({
     this.file,
@@ -15,17 +14,16 @@ class HubRepository {
     List<AppCollection>? collections,
     Map<String, StoreListing>? updateCache,
     Map<String, List<AppVersionRecord>>? versionHistory,
-    Set<String>? vpnBypassPackages,
     this.boostBeforeLaunch = true,
-    this.useVpnProxyForStores = true,
-    this.externalProxyAddress = '',
+    this.downloadLocation = DownloadLocationType.recommended,
+    this.customDownloadPath = '',
+    this.defaultSortMode = AppSortMode.nameAsc,
     this.geminiApiKey = '',
   }) : categories = categories ?? [...defaultAppCategories],
        appCategories = appCategories ?? {},
        collections = collections ?? [...defaultAppCollections],
        updateCache = updateCache ?? {},
-       versionHistory = versionHistory ?? {},
-       vpnBypassPackages = vpnBypassPackages ?? {};
+       versionHistory = versionHistory ?? {};
 
   final File? file;
 
@@ -34,11 +32,11 @@ class HubRepository {
   final List<AppCollection> collections;
   final Map<String, StoreListing> updateCache;
   final Map<String, List<AppVersionRecord>> versionHistory;
-  final Set<String> vpnBypassPackages;
 
   bool boostBeforeLaunch;
-  bool useVpnProxyForStores;
-  String externalProxyAddress;
+  DownloadLocationType downloadLocation;
+  String customDownloadPath;
+  AppSortMode defaultSortMode;
 
   /// Kept in memory only; stored securely on Android via Keystore AES-GCM.
   String geminiApiKey;
@@ -132,21 +130,17 @@ class HubRepository {
         }
       }
 
-      if (raw['vpn_bypass_packages'] case final List<Object?> bps) {
-        repo.vpnBypassPackages.addAll([
-          for (final p in bps)
-            if ('$p'.trim().isNotEmpty) '$p'.trim(),
-        ]);
+      if (raw['download_location'] case final String dl) {
+        repo.downloadLocation = DownloadLocationType.fromKey(dl);
       }
-
+      if (raw['custom_download_path'] case final String cdp) {
+        repo.customDownloadPath = cdp.trim();
+      }
+      if (raw['default_sort_mode'] case final String sm) {
+        repo.defaultSortMode = AppSortMode.fromKey(sm);
+      }
       if (raw['boost_before_launch'] case final bool b) {
         repo.boostBeforeLaunch = b;
-      }
-      if (raw['use_vpn_proxy_stores'] case final bool v) {
-        repo.useVpnProxyForStores = v;
-      }
-      if (raw['external_proxy_address'] case final String p) {
-        repo.externalProxyAddress = p.trim();
       }
       if (raw['gemini_api_key'] case final String k when k.trim().isNotEmpty) {
         repo.legacyMigratedGeminiKey = k.trim();
@@ -183,10 +177,10 @@ class HubRepository {
             for (final e in versionHistory.entries)
               e.key: [for (final r in e.value) r.toJson()],
           },
-          'vpn_bypass_packages': vpnBypassPackages.toList()..sort(),
+          'download_location': downloadLocation.key,
+          'custom_download_path': customDownloadPath,
+          'default_sort_mode': defaultSortMode.key,
           'boost_before_launch': boostBeforeLaunch,
-          'use_vpn_proxy_stores': useVpnProxyForStores,
-          'external_proxy_address': externalProxyAddress,
         }),
       );
     } on FileSystemException {

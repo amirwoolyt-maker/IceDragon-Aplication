@@ -29,7 +29,6 @@ class _FakeHubPlatform implements HubPlatform {
   final List<String> shared = [];
   final Map<String, String> secrets = {};
   final String dirPath;
-  int openedVpnSettingsCount = 0;
 
   _FakeHubPlatform({this.dirPath = ''});
 
@@ -147,12 +146,6 @@ class _FakeHubPlatform implements HubPlatform {
 
   @override
   Future<bool> openUsageAccessSettings() async => true;
-
-  @override
-  Future<bool> openVpnSettings() async {
-    openedVpnSettingsCount++;
-    return true;
-  }
 
   @override
   Future<bool> saveSecret(String key, String value) async {
@@ -345,22 +338,52 @@ void main() {
     expect(gp!.title, 'Picsart AI Photo Editor');
     expect(gp.isFree, isTrue);
 
+    final appleJson = jsonEncode({
+      'resultCount': 1,
+      'results': [
+        {
+          'trackId': 587424647,
+          'trackName': 'Picsart AI Photo Video Editor',
+          'bundleId': 'com.picsart.studio',
+          'artistName': 'PicsArt, Inc.',
+          'artworkUrl512': 'https://is1-ssl.mzstatic.com/icon.png',
+          'version': '31.2.0',
+          'fileSizeBytes': '210000000',
+          'price': 0.0,
+          'formattedPrice': 'Free',
+          'averageUserRating': 4.7,
+          'userRatingCount': 150000,
+          'description': 'AI Photo editor for iOS',
+          'primaryGenreName': 'Photo & Video',
+          'minimumOsVersion': '15.0',
+          'trackViewUrl': 'https://apps.apple.com/app/id587424647',
+        },
+      ],
+    });
+    final appleHits = StoreAggregator.parseAppStoreResponse(appleJson);
+    expect(appleHits.length, 1);
+    expect(appleHits.first.store, StoreId.appStore);
+    expect(appleHits.first.packageName, 'com.picsart.studio');
+    expect(appleHits.first.minAndroidLabel, 'iOS 15.0+');
+
     final unified = UnifiedAppResult(packageName: 'com.picsart.studio');
     unified.mergeListing(bz.first);
     unified.mergeListing(mk);
     unified.mergeListing(gp);
-    expect(unified.listings.length, 3);
+    unified.mergeListing(appleHits.first);
+    expect(unified.listings.length, 4);
     expect(unified.availableInAllThree, isTrue);
   });
 
-  test('HubRepository persists categories, collections, bypass plan & excludes Gemini key', () async {
+  test('HubRepository persists categories, collections, download settings & excludes Gemini key', () async {
     final dir = Directory.systemTemp.createTempSync('hub_repo_test_');
     try {
       final repo = await HubRepository.load(dir.path);
       repo.appCategories['com.picsart.studio'] = {'media', 'ai'};
       repo.geminiApiKey = 'test-key';
-      repo.vpnBypassPackages.add('com.picsart.studio');
-      repo.externalProxyAddress = '127.0.0.1:10808';
+      repo.downloadLocation = DownloadLocationType.custom;
+      repo.customDownloadPath = '/storage/emulated/0/MyDownloads';
+      repo.defaultSortMode = AppSortMode.sizeDesc;
       final col = AppCollection(
         id: 'c1',
         nameEn: 'My Top',
@@ -380,8 +403,9 @@ void main() {
         reloaded.appCategories['com.picsart.studio'],
         containsAll(['media', 'ai']),
       );
-      expect(reloaded.vpnBypassPackages, contains('com.picsart.studio'));
-      expect(reloaded.externalProxyAddress, '127.0.0.1:10808');
+      expect(reloaded.downloadLocation, DownloadLocationType.custom);
+      expect(reloaded.customDownloadPath, '/storage/emulated/0/MyDownloads');
+      expect(reloaded.defaultSortMode, AppSortMode.sizeDesc);
       expect(reloaded.geminiApiKey, isEmpty);
 
       final rawDisk = File(
@@ -825,7 +849,7 @@ void main() {
     expect(find.text('0'), findsNothing);
   });
 
-  testWidgets('Sequential batch uninstall, standalone VPN bypass plan & launch failure', (
+  testWidgets('Sequential batch uninstall & app launch failure', (
     tester,
   ) async {
     final order = <String>[];
@@ -840,7 +864,7 @@ void main() {
         inFlight--;
         return pkg != 'com.example.calculator';
       };
-    final repo = HubRepository()
+    final repo = HubRepository(boostBeforeLaunch: false)
       ..updateCache['com.picsart.studio'] = const StoreListing(
         store: StoreId.bazaar,
         packageName: 'com.picsart.studio',
@@ -871,30 +895,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Picsart'));
     await tester.tap(find.text('Snapseed'));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('+ VPN Bypass'));
-    await tester.tap(find.text('+ VPN Bypass'));
-    await tester.pumpAndSettle();
-    expect(
-      hub.repo.vpnBypassPackages,
-      containsAll(['com.picsart.studio', 'com.niksoftware.snapseed']),
-    );
-    await tester.tap(find.text('Android VPN Settings'));
-    await tester.pumpAndSettle();
-    expect(platform.openedVpnSettingsCount, 1);
-    ScaffoldMessenger.of(
-      tester.element(find.byType(AppsManagerPage)),
-    ).hideCurrentSnackBar();
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('- VPN Bypass'));
-    await tester.tap(find.text('- VPN Bypass'));
-    await tester.pumpAndSettle();
-    expect(hub.repo.vpnBypassPackages, isEmpty);
-    ScaffoldMessenger.of(
-      tester.element(find.byType(AppsManagerPage)),
-    ).hideCurrentSnackBar();
     await tester.pumpAndSettle();
 
     final uninstallBtn = find.widgetWithText(OutlinedButton, 'Uninstall');
@@ -1038,26 +1038,36 @@ void main() {
       _wrap(Scaffold(body: HubSettingsPage(hub: hub, settings: HubAppSettings()))),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byType(TextField).first);
-    await tester.enterText(find.byType(TextField).first, 'bad-proxy');
-    await tester.pump();
-    final proxySave = find.text('Save').first;
-    await tester.ensureVisible(proxySave);
-    await tester.tap(proxySave);
-    await tester.pump();
-    expect(
-      find.text('Enter host:port (port 1\u201365535) or leave empty'),
-      findsOneWidget,
+
+    // Select custom download location
+    await tester.tap(find.text('Custom storage directory'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNWidgets(2));
+
+    final pathSave = find.text('Save').first;
+    await tester.ensureVisible(pathSave);
+    await tester.tap(pathSave);
+    await tester.pumpAndSettle();
+    expect(find.text('Please enter a valid directory path'), findsOneWidget);
+
+    await tester.enterText(
+      find.byType(TextField).first,
+      '/storage/emulated/0/MyDownloads',
     );
+    await tester.tap(pathSave);
+    await tester.pumpAndSettle();
+    expect(hub.repo.customDownloadPath, '/storage/emulated/0/MyDownloads');
+
     ScaffoldMessenger.maybeOf(
       tester.element(find.byType(HubSettingsPage)),
     )?.hideCurrentSnackBar();
     await tester.pumpAndSettle();
 
-    final proxyDelete = find.text('Delete').first;
-    await tester.ensureVisible(proxyDelete);
-    await tester.tap(proxyDelete);
+    final pathDelete = find.text('Delete').first;
+    await tester.ensureVisible(pathDelete);
+    await tester.tap(pathDelete);
     await tester.pumpAndSettle();
+    expect(find.text('Delete'), findsNothing);
     expect(find.text('Delete'), findsNothing);
 
     await tester.ensureVisible(find.byType(TextField).last);

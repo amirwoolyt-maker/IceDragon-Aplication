@@ -109,17 +109,6 @@ class _StoreHubPageState extends State<StoreHubPage> {
             backgroundColor: Colors.transparent,
             appBar: AppBar(
               title: Text(s.storesTitle),
-              actions: [
-                if (hub.activeProxyAddress != null)
-                  const Padding(
-                    padding: EdgeInsetsDirectional.only(end: 12),
-                    child: IcePillBadge(
-                      text: 'VPN',
-                      icon: Icons.shield_rounded,
-                      color: DarkGlassPalette.mint,
-                    ),
-                  ),
-              ],
             ),
             body: Column(
               children: [
@@ -293,6 +282,7 @@ class _StoreHubPageState extends State<StoreHubPage> {
                                 StoreId.googlePlay,
                                 StoreId.bazaar,
                                 StoreId.myket,
+                                StoreId.appStore,
                               ])
                                 Padding(
                                   padding: const EdgeInsetsDirectional.only(

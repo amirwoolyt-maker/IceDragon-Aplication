@@ -131,10 +131,11 @@ Color storeColor(StoreId store) => switch (store) {
   StoreId.googlePlay => const Color(0xFF00C896),
   StoreId.bazaar => const Color(0xFF28B463),
   StoreId.myket => const Color(0xFF00B4D8),
+  StoreId.appStore => const Color(0xFF007AFF),
   StoreId.fdroid => const Color(0xFF3F88C5),
 };
 
-/// Compact store badge pill (`Google Play`, `Cafe Bazaar`, `Myket`, `F-Droid`).
+/// Compact store badge pill (`Google Play`, `Cafe Bazaar`, `Myket`, `App Store`, `F-Droid`).
 class StoreChip extends StatelessWidget {
   const StoreChip({
     super.key,
@@ -163,13 +164,22 @@ class StoreChip extends StatelessWidget {
             horizontal: compact ? 7 : 10,
             vertical: compact ? 3 : 5,
           ),
-          child: Text(
-            store.label(fa: fa),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: c,
-              fontWeight: FontWeight.w700,
-              fontSize: compact ? 10.5 : 11.5,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (store == StoreId.appStore) ...[
+                Icon(Icons.apple, size: compact ? 12 : 14, color: c),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                store.label(fa: fa),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: c,
+                  fontWeight: FontWeight.w700,
+                  fontSize: compact ? 10.5 : 11.5,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -177,16 +187,24 @@ class StoreChip extends StatelessWidget {
   }
 }
 
-/// Runs Speed Boost (when enabled) and launches [app], showing real RAM
-/// trim stats in a floating SnackBar (#5).
+/// Runs Speed Boost (when enabled) and launches [app] with a cyber-turbine animation (#5).
 Future<void> boostAndLaunchApp(
   BuildContext context,
   HubController hub,
   InstalledAppDetail app,
 ) async {
+  if (hub.repo.boostBeforeLaunch) {
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => IceSpeedBoostDialog(hub: hub, app: app),
+    );
+    return;
+  }
+
   final s = HubStrings.of(context);
   final messenger = ScaffoldMessenger.maybeOf(context);
-  final (launched, report) = await hub.boostAndLaunch(app.package);
+  final (launched, _) = await hub.boostAndLaunch(app.package);
   if (!context.mounted) return;
   if (!launched) {
     messenger?.showSnackBar(
@@ -197,24 +215,206 @@ Future<void> boostAndLaunchApp(
     );
     return;
   }
-  if (report != null) {
-    final gained = formatStorageBytes(report.gainedBytes);
-    final freeNow = formatStorageBytes(report.afterAvailBytes);
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(
-          s.speedBoostDone(gained, freeNow, report.processesTrimmed),
+  messenger?.showSnackBar(
+    SnackBar(
+      content: Text(s.appLaunchedPlain(app.label)),
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+    ),
+  );
+}
+
+/// Cyber-turbine Speed Boost animation dialog before launching an application.
+class IceSpeedBoostDialog extends StatefulWidget {
+  const IceSpeedBoostDialog({
+    super.key,
+    required this.hub,
+    required this.app,
+  });
+
+  final HubController hub;
+  final InstalledAppDetail app;
+
+  @override
+  State<IceSpeedBoostDialog> createState() => _IceSpeedBoostDialogState();
+}
+
+class _IceSpeedBoostDialogState extends State<IceSpeedBoostDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animCtrl;
+  int _stage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..addListener(() {
+        final progress = _animCtrl.value;
+        final newStage = progress < 0.35
+            ? 0
+            : progress < 0.70
+                ? 1
+                : progress < 0.95
+                    ? 2
+                    : 3;
+        if (newStage != _stage && mounted) {
+          setState(() => _stage = newStage);
+        }
+      });
+
+    _executeBoostAndLaunch();
+  }
+
+  Future<void> _executeBoostAndLaunch() async {
+    _animCtrl.forward();
+    // Execute memory trim in parallel with the first half of animation
+    await widget.hub.boostAndLaunch(widget.app.package);
+    if (!mounted) return;
+    if (_animCtrl.isAnimating) {
+      await _animCtrl.forward();
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(true);
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = HubStrings.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
+    final stageText = switch (_stage) {
+      0 => s.speedBoostOptimizingRam,
+      1 => s.speedBoostAllocatingCpu,
+      2 => s.speedBoostPreparingExecution,
+      _ => s.speedBoostLaunchingTarget,
+    };
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      child: GlassCard(
+        dark: dark,
+        radius: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
+        accentColor: DarkGlassPalette.cyan,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.rocket_launch_rounded,
+                  color: DarkGlassPalette.cyan,
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  s.speedBoostActiveTitle,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
+            AnimatedBuilder(
+              animation: _animCtrl,
+              builder: (context, _) => Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox.square(
+                    dimension: 110,
+                    child: CircularProgressIndicator(
+                      value: _animCtrl.value,
+                      strokeWidth: 4.5,
+                      backgroundColor: Colors.white.withValues(alpha: 0.08),
+                      valueColor: const AlwaysStoppedAnimation(
+                        DarkGlassPalette.cyan,
+                      ),
+                    ),
+                  ),
+                  Transform.rotate(
+                    angle: _animCtrl.value * 6.28,
+                    child: Container(
+                      width: 124,
+                      height: 124,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: DarkGlassPalette.cyan.withValues(
+                            alpha: 0.28 * (1 - _animCtrl.value),
+                          ),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  AppIconBadge(
+                    package: widget.app.package,
+                    hub: widget.hub,
+                    size: 64,
+                    radius: 18,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            AnimatedBuilder(
+              animation: _animCtrl,
+              builder: (context, _) {
+                final percent = (_animCtrl.value * 100).toInt();
+                return Text(
+                  '$percent%',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: DarkGlassPalette.cyan,
+                    letterSpacing: -0.5,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 6),
+            Text(
+              widget.app.label,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+              ),
+              child: Text(
+                stageText,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: DarkGlassPalette.muted,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
         ),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
-    );
-  } else {
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(s.appLaunchedPlain(app.label)),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
       ),
     );
   }

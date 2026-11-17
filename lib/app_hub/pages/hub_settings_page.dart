@@ -9,7 +9,7 @@ import '../hub_models.dart';
 import '../hub_strings.dart';
 import 'hub_widgets.dart';
 
-/// Standalone App Hub preferences page (#5, #8, #12, #16 + external VPN options).
+/// Standalone App Hub preferences page (#5, #8, #12, #16, download storage & appearance).
 class HubSettingsPage extends StatefulWidget {
   const HubSettingsPage({
     super.key,
@@ -26,16 +26,16 @@ class HubSettingsPage extends StatefulWidget {
 
 class _HubSettingsPageState extends State<HubSettingsPage> {
   late final TextEditingController _keyCtrl;
-  late final TextEditingController _proxyCtrl;
+  late final TextEditingController _customPathCtrl;
   bool _obscureKey = true;
-  String? _proxyError;
+  String? _pathError;
 
   @override
   void initState() {
     super.initState();
     _keyCtrl = TextEditingController(text: widget.hub.repo.geminiApiKey);
-    _proxyCtrl = TextEditingController(
-      text: widget.hub.repo.externalProxyAddress,
+    _customPathCtrl = TextEditingController(
+      text: widget.hub.repo.customDownloadPath,
     );
     Future.microtask(() async {
       await widget.hub.ensureLoaded();
@@ -44,8 +44,8 @@ class _HubSettingsPageState extends State<HubSettingsPage> {
         if (_keyCtrl.text != widget.hub.repo.geminiApiKey) {
           _keyCtrl.text = widget.hub.repo.geminiApiKey;
         }
-        if (_proxyCtrl.text != widget.hub.repo.externalProxyAddress) {
-          _proxyCtrl.text = widget.hub.repo.externalProxyAddress;
+        if (_customPathCtrl.text != widget.hub.repo.customDownloadPath) {
+          _customPathCtrl.text = widget.hub.repo.customDownloadPath;
         }
       });
     });
@@ -54,7 +54,7 @@ class _HubSettingsPageState extends State<HubSettingsPage> {
   @override
   void dispose() {
     _keyCtrl.dispose();
-    _proxyCtrl.dispose();
+    _customPathCtrl.dispose();
     super.dispose();
   }
 
@@ -68,7 +68,6 @@ class _HubSettingsPageState extends State<HubSettingsPage> {
       listenable: Listenable.merge([widget.hub, widget.settings]),
       builder: (context, _) {
         final hub = widget.hub;
-        final bypassCount = hub.repo.vpnBypassPackages.length;
         return ListView(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
           children: [
@@ -230,116 +229,114 @@ class _HubSettingsPageState extends State<HubSettingsPage> {
                   Row(
                     children: [
                       const Icon(
-                        Icons.vpn_lock_outlined,
+                        Icons.folder_outlined,
                         color: DarkGlassPalette.cyan,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          s.openVpnSettingsLabel,
+                          s.downloadLocationTitle,
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      TextButton(
-                        onPressed: hub.openVpnSettings,
-                        child: Text(s.open),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    s.vpnStandaloneInfo,
+                    s.downloadLocationSubtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  SwitchListTile(
+                  const SizedBox(height: 10),
+                  RadioListTile<DownloadLocationType>(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(s.useVpnForStoresLabel),
-                    value: hub.repo.useVpnProxyForStores,
-                    onChanged: hub.setUseVpnProxyForStores,
-                  ),
-                  TextField(
-                    controller: _proxyCtrl,
-                    onChanged: (_) {
-                      if (_proxyError != null) {
-                        setState(() => _proxyError = null);
-                      } else {
-                        setState(() {});
-                      }
+                    title: Text(s.downloadLocationRecommended),
+                    value: DownloadLocationType.recommended,
+                    groupValue: hub.repo.downloadLocation,
+                    onChanged: (v) {
+                      if (v != null) hub.setDownloadLocation(v);
                     },
-                    decoration: InputDecoration(
-                      isDense: true,
-                      labelText: s.externalProxyLabel,
-                      hintText: s.externalProxyHint,
-                      errorText: _proxyError,
-                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (_proxyCtrl.text.isNotEmpty)
-                        TextButton(
-                          onPressed: () async {
-                            setState(() {
-                              _proxyCtrl.clear();
-                              _proxyError = null;
-                            });
-                            await hub.setExternalProxyAddress('');
-                          },
-                          child: Text(s.delete),
-                        ),
-                      const SizedBox(width: 8),
-                      FilledButton.tonal(
-                        onPressed: () async {
-                          final ok = await hub.setExternalProxyAddress(
-                            _proxyCtrl.text,
-                          );
-                          if (!context.mounted) return;
-                          if (!ok) {
-                            setState(() => _proxyError = s.externalProxyInvalid);
-                            return;
-                          }
-                          setState(() => _proxyError = null);
-                          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                            SnackBar(
-                              content: Text(s.done),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        child: Text(s.save),
+                  RadioListTile<DownloadLocationType>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(s.downloadLocationPublic),
+                    value: DownloadLocationType.publicDownloads,
+                    groupValue: hub.repo.downloadLocation,
+                    onChanged: (v) {
+                      if (v != null) hub.setDownloadLocation(v);
+                    },
+                  ),
+                  RadioListTile<DownloadLocationType>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(s.downloadLocationCustom),
+                    value: DownloadLocationType.custom,
+                    groupValue: hub.repo.downloadLocation,
+                    onChanged: (v) {
+                      if (v != null) hub.setDownloadLocation(v);
+                    },
+                  ),
+                  if (hub.repo.downloadLocation ==
+                      DownloadLocationType.custom) ...[
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _customPathCtrl,
+                      onChanged: (_) {
+                        if (_pathError != null) {
+                          setState(() => _pathError = null);
+                        } else {
+                          setState(() {});
+                        }
+                      },
+                      decoration: InputDecoration(
+                        isDense: true,
+                        labelText: s.downloadLocationCustom,
+                        hintText: s.customDownloadPathHint,
+                        errorText: _pathError,
                       ),
-                    ],
-                  ),
-                  if (bypassCount > 0) ...[
-                    const Divider(height: 20),
+                    ),
+                    const SizedBox(height: 8),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Expanded(
-                          child: Text(
-                            s.savedBypassListTitle(bypassCount),
-                            style: theme.textTheme.bodySmall,
+                        if (_customPathCtrl.text.isNotEmpty)
+                          TextButton(
+                            onPressed: () async {
+                              setState(() {
+                                _customPathCtrl.clear();
+                                _pathError = null;
+                              });
+                              await hub.setDownloadLocation(
+                                DownloadLocationType.recommended,
+                                '',
+                              );
+                            },
+                            child: Text(s.delete),
                           ),
-                        ),
-                        IconButton(
-                          tooltip: s.share,
-                          onPressed: () => hub.platform.shareText(
-                            (hub.repo.vpnBypassPackages.toList()..sort()).join(
-                              '\n',
-                            ),
-                            subject: s.savedBypassListTitle(bypassCount),
-                          ),
-                          icon: const Icon(Icons.share_outlined, size: 19),
-                        ),
-                        IconButton(
-                          tooltip: s.delete,
-                          onPressed: hub.clearVpnBypassPlan,
-                          icon: const Icon(Icons.delete_outline_rounded, size: 19),
+                        const SizedBox(width: 8),
+                        FilledButton.tonal(
+                          onPressed: () async {
+                            final raw = _customPathCtrl.text.trim();
+                            if (raw.isEmpty) {
+                              setState(() => _pathError = s.customPathInvalid);
+                              return;
+                            }
+                            await hub.setDownloadLocation(
+                              DownloadLocationType.custom,
+                              raw,
+                            );
+                            if (!context.mounted) return;
+                            setState(() => _pathError = null);
+                            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                              SnackBar(
+                                content: Text(s.downloadPathSaved),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          child: Text(s.save),
                         ),
                       ],
                     ),
