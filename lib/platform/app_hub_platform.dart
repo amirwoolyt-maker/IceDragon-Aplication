@@ -190,4 +190,82 @@ class AppHubPlatformChannel {
       return '';
     }
   }
+
+  /// Scans device storage breakdown across images, videos, audio, documents, apps & system.
+  static Future<Map<Object?, Object?>> scanStorageBreakdown() async {
+    try {
+      return await _channel.invokeMapMethod<Object?, Object?>(
+            'scanStorageBreakdown',
+          ) ??
+          const {};
+    } on MissingPluginException {
+      return const {};
+    } on PlatformException {
+      return const {};
+    }
+  }
+
+  /// Queries media and large files by category (`images`, `videos`, `audio`, `documents`, `large`).
+  static Future<List<Map<Object?, Object?>>> getMediaFiles({
+    required String category,
+    int minBytes = 0,
+    int limit = 100,
+  }) async {
+    try {
+      return await _channel.invokeListMethod<Map<Object?, Object?>>(
+            'getMediaFiles',
+            {
+              'category': category,
+              'minBytes': minBytes,
+              'limit': limit,
+            },
+          ) ??
+          const [];
+    } on MissingPluginException {
+      return const [];
+    } on PlatformException {
+      return const [];
+    }
+  }
+
+  /// Deletes selected files on disk and via MediaStore ContentResolver.
+  static Future<Map<Object?, Object?>> deleteFiles({
+    List<String> paths = const [],
+    List<String> uris = const [],
+  }) async {
+    try {
+      return await _channel.invokeMapMethod<Object?, Object?>(
+            'deleteFiles',
+            {
+              'paths': paths,
+              'uris': uris,
+            },
+          ) ??
+          const {};
+    } on MissingPluginException {
+      return const {};
+    } on PlatformException {
+      return const {};
+    }
+  }
+
+  /// Opens a video, photo or document via Android Intent.ACTION_VIEW.
+  static Future<bool> openFile({
+    required String path,
+    required String uri,
+    required String mimeType,
+  }) async {
+    try {
+      return await _channel.invokeMethod<bool>('openFile', {
+            'path': path,
+            'uri': uri,
+            'mimeType': mimeType,
+          }) ??
+          false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
 }

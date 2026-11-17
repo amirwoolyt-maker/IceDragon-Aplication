@@ -5,8 +5,13 @@ import subprocess
 import sys
 
 def run_cmd(cmd):
-    p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    return p.returncode, p.stdout
+    try:
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        return p.returncode, p.stdout
+    except FileNotFoundError:
+        return 127, 'command not found'
+    except Exception as e:
+        return 1, str(e)
 
 def main():
     keystore_b64 = os.environ.get('KEYSTORE', '').strip()
@@ -43,7 +48,29 @@ def main():
             print(f'::warning::Error decoding secret keystore: {e}')
 
     if not used_secret:
-        print('Using dedicated CI test signing keystore for testing artifact APKs...')
+        fallback_b64_path = os.path.join('android', 'ci_fallback.jks.b64')
+        if os.path.exists(fallback_b64_path):
+            print('Using permanent repository fallback release keystore...')
+            storepass = 'IceDragonRelease2026!Key'
+            alias = 'release'
+            try:
+                with open(fallback_b64_path, 'r', encoding='utf-8') as f:
+                    raw_b64 = re.sub(r'\s+', '', f.read())
+                data = base64.b64decode(raw_b64)
+                with open(jks_path, 'wb') as f:
+                    f.write(data)
+                code, out = run_cmd(['keytool', '-list', '-v', '-keystore', jks_path, '-storepass', storepass])
+                if code == 0:
+                    cert_info = out
+                    used_secret = True
+                    m_alias = re.search(r'Alias name:\s*(.+)', out, re.IGNORECASE)
+                    if m_alias:
+                        alias = m_alias.group(1).strip()
+            except Exception as e:
+                print(f'::warning::Fallback keystore load failed: {e}')
+
+    if not used_secret:
+        print('Generating temporary CI test signing keystore...')
         storepass = 'IceDragonHubTest2026!'
         alias = 'release'
         if os.path.exists(jks_path):

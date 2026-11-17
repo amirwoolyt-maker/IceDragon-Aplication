@@ -7,6 +7,7 @@ import '../hub_strings.dart';
 import 'app_compare_page.dart';
 import 'app_profile_page.dart';
 import 'hub_widgets.dart';
+import 'storage_cleaner_page.dart';
 
 enum _AssistantSubTab { doctor, updates, collections, ai }
 
@@ -243,6 +244,8 @@ class _DoctorView extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        StorageBreakdownChartCard(hub: hub),
         const SizedBox(height: 12),
         if (report != null) ...[
           // Free space recommendations

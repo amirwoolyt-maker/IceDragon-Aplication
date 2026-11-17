@@ -1586,3 +1586,157 @@ enum StoreSortMode {
   sizeDesc,
   storeCount,
 }
+
+/// Breakdown of device storage by category: Photos, Videos, Audio, Documents, Apps, and System.
+class StorageBreakdown {
+  const StorageBreakdown({
+    this.totalBytes = 0,
+    this.freeBytes = 0,
+    this.imagesBytes = 0,
+    this.imagesCount = 0,
+    this.videosBytes = 0,
+    this.videosCount = 0,
+    this.audioBytes = 0,
+    this.audioCount = 0,
+    this.documentsBytes = 0,
+    this.documentsCount = 0,
+    this.appsBytes = 0,
+    this.otherBytes = 0,
+  });
+
+  final int totalBytes;
+  final int freeBytes;
+  final int imagesBytes;
+  final int imagesCount;
+  final int videosBytes;
+  final int videosCount;
+  final int audioBytes;
+  final int audioCount;
+  final int documentsBytes;
+  final int documentsCount;
+  final int appsBytes;
+  final int otherBytes;
+
+  int get usedBytes => (totalBytes - freeBytes).clamp(0, totalBytes);
+
+  double get usedRatio =>
+      totalBytes > 0 ? (usedBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
+  double get freeRatio =>
+      totalBytes > 0 ? (freeBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
+  double get imagesRatio =>
+      totalBytes > 0 ? (imagesBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
+  double get videosRatio =>
+      totalBytes > 0 ? (videosBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
+  double get audioRatio =>
+      totalBytes > 0 ? (audioBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
+  double get documentsRatio =>
+      totalBytes > 0 ? (documentsBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
+  double get appsRatio =>
+      totalBytes > 0 ? (appsBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
+  double get otherRatio =>
+      totalBytes > 0 ? (otherBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
+
+  factory StorageBreakdown.fromPlatformMap(Map<Object?, Object?> map) {
+    int toI(Object? v) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return 0;
+    }
+
+    return StorageBreakdown(
+      totalBytes: toI(map['totalBytes']),
+      freeBytes: toI(map['freeBytes']),
+      imagesBytes: toI(map['imagesBytes']),
+      imagesCount: toI(map['imagesCount']),
+      videosBytes: toI(map['videosBytes']),
+      videosCount: toI(map['videosCount']),
+      audioBytes: toI(map['audioBytes']),
+      audioCount: toI(map['audioCount']),
+      documentsBytes: toI(map['documentsBytes']),
+      documentsCount: toI(map['documentsCount']),
+      appsBytes: toI(map['appsBytes']),
+      otherBytes: toI(map['otherBytes']),
+    );
+  }
+}
+
+/// Metadata for photos, videos, audio, and documents found on the device.
+class StorageMediaFile {
+  const StorageMediaFile({
+    required this.id,
+    required this.name,
+    required this.path,
+    required this.uri,
+    required this.sizeBytes,
+    required this.dateModified,
+    this.mimeType = '',
+    this.durationMs = 0,
+  });
+
+  final String id;
+  final String name;
+  final String path;
+  final String uri;
+  final int sizeBytes;
+  final int dateModified;
+  final String mimeType;
+  final int durationMs;
+
+  bool get isImage =>
+      mimeType.startsWith('image/') ||
+      name.toLowerCase().endsWith('.jpg') ||
+      name.toLowerCase().endsWith('.jpeg') ||
+      name.toLowerCase().endsWith('.png') ||
+      name.toLowerCase().endsWith('.webp') ||
+      name.toLowerCase().endsWith('.gif');
+
+  bool get isVideo =>
+      mimeType.startsWith('video/') ||
+      name.toLowerCase().endsWith('.mp4') ||
+      name.toLowerCase().endsWith('.mkv') ||
+      name.toLowerCase().endsWith('.webm') ||
+      name.toLowerCase().endsWith('.3gp') ||
+      name.toLowerCase().endsWith('.avi');
+
+  bool get isAudio =>
+      mimeType.startsWith('audio/') ||
+      name.toLowerCase().endsWith('.mp3') ||
+      name.toLowerCase().endsWith('.m4a') ||
+      name.toLowerCase().endsWith('.aac') ||
+      name.toLowerCase().endsWith('.ogg') ||
+      name.toLowerCase().endsWith('.wav');
+
+  bool get isDocument => !isImage && !isVideo && !isAudio;
+
+  String get formattedDuration {
+    if (durationMs <= 0) return '';
+    final totalSec = (durationMs / 1000).round();
+    final mins = totalSec ~/ 60;
+    final secs = totalSec % 60;
+    if (mins >= 60) {
+      final hours = mins ~/ 60;
+      final remMins = mins % 60;
+      return '${hours.toString().padLeft(2, '0')}:${remMins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+    }
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  factory StorageMediaFile.fromPlatformMap(Map<Object?, Object?> map) {
+    int toI(Object? v) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return 0;
+    }
+
+    return StorageMediaFile(
+      id: '${map['id'] ?? ''}',
+      name: '${map['name'] ?? ''}',
+      path: '${map['path'] ?? ''}',
+      uri: '${map['uri'] ?? ''}',
+      sizeBytes: toI(map['sizeBytes']),
+      dateModified: toI(map['dateModified']),
+      mimeType: '${map['mimeType'] ?? ''}',
+      durationMs: toI(map['durationMs']),
+    );
+  }
+}

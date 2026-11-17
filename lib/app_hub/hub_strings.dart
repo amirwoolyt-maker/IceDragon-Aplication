@@ -377,4 +377,50 @@ class HubStrings {
   );
   String get storageUsedLabel => tr('Used storage', 'فضای پر شده');
   String get ramAvailableLabel => tr('Available RAM', 'رم در دسترس');
+
+  // Storage Breakdown & Cleaner
+  String get storageBreakdownTitle =>
+      tr('Storage Breakdown', 'تحلیل و نمودار حافظه گوشی');
+  String get storageBreakdownSubtitle => tr(
+    'Visual breakdown of videos, photos, files & apps',
+    'نمودار تفکیک فضای اشغال‌شده توسط عکس‌ها، ویدیوها، فایل‌ها و برنامه‌ها',
+  );
+  String get manageStorageAction =>
+      tr('Manage & Clean Storage', 'مدیریت و پاکسازی فایل‌ها');
+  String get categoryPhotos => tr('Photos', 'عکس‌ها');
+  String get categoryVideos => tr('Videos', 'ویدیوها');
+  String get categoryAudio => tr('Audio', 'موسیقی و صوت');
+  String get categoryDocuments => tr('Files & Downloads', 'فایل‌ها و اسناد');
+  String get categoryApps => tr('Apps & Data', 'برنامه‌ها و دیتا');
+  String get categoryOther => tr('System & Other', 'سیستم و متفرقه');
+  String get categoryFree => tr('Free Space', 'فضای آزاد');
+  String get categoryLargeFiles => tr('Large Files (>20MB)', 'فایل‌های حجیم (>۲۰ مگ)');
+
+  String countItemsLabel(int n) => tr('$n items', '$n مورد');
+  String get playVideoAction => tr('Play Video', 'پخش ویدیو');
+  String get previewPhotoAction => tr('Preview Photo', 'پیش‌نمایش عکس');
+  String get openFileAction => tr('Open File', 'باز کردن فایل');
+  String get deleteFileAction => tr('Delete File', 'حذف فایل');
+  String get deleteSelectedAction =>
+      tr('Delete Selected', 'حذف فایل‌های انتخاب‌شده');
+  String confirmDeleteCount(int n, String size) => tr(
+    'Permanently delete $n selected file(s) to free $size?',
+    'آیا از حذف دائمی $n فایل انتخاب‌شده و آزادسازی $size اطمینان دارید؟',
+  );
+  String confirmDeleteSingle(String name, String size) => tr(
+    'Permanently delete "$name" ($size)?',
+    'آیا از حذف دائمی «$name» ($size) اطمینان دارید؟',
+  );
+  String filesDeletedSuccess(int n, String size) => tr(
+    'Successfully deleted $n file(s) and freed $size.',
+    '$n فایل با موفقیت حذف شد و $size فضا آزاد گردید.',
+  );
+  String get noFilesInCategory => tr(
+    'No files found in this category.',
+    'هیچ فایلی در این بخش یافت نشد.',
+  );
+  String get videoDetailsTitle => tr('Video Details', 'مشخصات ویدیو');
+  String get durationLabel => tr('Duration', 'مدت زمان');
+  String get filePathLabel => tr('Path', 'مسیر');
+  String get fileSizeLabel => tr('Size', 'حجم');
 }

@@ -14,6 +14,7 @@ import 'package:icedragon_app_hub/app_hub/pages/app_profile_page.dart';
 import 'package:icedragon_app_hub/app_hub/pages/apps_manager_page.dart';
 import 'package:icedragon_app_hub/app_hub/pages/assistant_hub_page.dart';
 import 'package:icedragon_app_hub/app_hub/pages/hub_settings_page.dart';
+import 'package:icedragon_app_hub/app_hub/pages/storage_cleaner_page.dart';
 import 'package:icedragon_app_hub/app_hub/pages/store_hub_page.dart';
 import 'package:icedragon_app_hub/app_hub/store_aggregator.dart';
 import 'package:icedragon_app_hub/hub_settings.dart';
@@ -176,6 +177,111 @@ class _FakeHubPlatform implements HubPlatform {
       apps.removeWhere((a) => a.package == package);
     }
     return ok;
+  }
+
+  StorageBreakdown fakeBreakdown = const StorageBreakdown(
+    totalBytes: 128 * 1024 * 1024 * 1024,
+    freeBytes: 32 * 1024 * 1024 * 1024,
+    imagesBytes: 14 * 1024 * 1024 * 1024,
+    imagesCount: 520,
+    videosBytes: 28 * 1024 * 1024 * 1024,
+    videosCount: 42,
+    audioBytes: 6 * 1024 * 1024 * 1024,
+    audioCount: 150,
+    documentsBytes: 12 * 1024 * 1024 * 1024,
+    documentsCount: 88,
+    appsBytes: 24 * 1024 * 1024 * 1024,
+    otherBytes: 12 * 1024 * 1024 * 1024,
+  );
+
+  List<StorageMediaFile> fakeFiles = [
+    const StorageMediaFile(
+      id: 'f1',
+      name: 'vacation_clip.mp4',
+      path: '/sdcard/DCIM/vacation_clip.mp4',
+      uri: 'content://media/external/video/media/1',
+      sizeBytes: 120 * 1024 * 1024,
+      dateModified: 1700000000000,
+      mimeType: 'video/mp4',
+      durationMs: 95000,
+    ),
+    const StorageMediaFile(
+      id: 'f2',
+      name: 'mountain_landscape.jpg',
+      path: '/sdcard/DCIM/mountain_landscape.jpg',
+      uri: 'content://media/external/images/media/2',
+      sizeBytes: 8 * 1024 * 1024,
+      dateModified: 1700100000000,
+      mimeType: 'image/jpeg',
+    ),
+    const StorageMediaFile(
+      id: 'f3',
+      name: 'project_archive.zip',
+      path: '/sdcard/Download/project_archive.zip',
+      uri: 'content://media/external/file/3',
+      sizeBytes: 65 * 1024 * 1024,
+      dateModified: 1700200000000,
+      mimeType: 'application/zip',
+    ),
+    const StorageMediaFile(
+      id: 'f4',
+      name: 'podcast_episode.mp3',
+      path: '/sdcard/Music/podcast_episode.mp3',
+      uri: 'content://media/external/audio/media/4',
+      sizeBytes: 45 * 1024 * 1024,
+      dateModified: 1700300000000,
+      mimeType: 'audio/mpeg',
+      durationMs: 1800000,
+    ),
+  ];
+
+  final List<String> openedFiles = [];
+  final List<String> deletedFilePaths = [];
+
+  @override
+  Future<StorageBreakdown> scanStorageBreakdown() async => fakeBreakdown;
+
+  @override
+  Future<List<StorageMediaFile>> getMediaFiles({
+    required String category,
+    int minBytes = 0,
+    int limit = 100,
+  }) async {
+    return switch (category) {
+      'videos' => fakeFiles.where((f) => f.isVideo).toList(),
+      'images' => fakeFiles.where((f) => f.isImage).toList(),
+      'audio' => fakeFiles.where((f) => f.isAudio).toList(),
+      'documents' => fakeFiles.where((f) => f.isDocument).toList(),
+      _ => fakeFiles.where((f) => f.sizeBytes >= minBytes).toList(),
+    };
+  }
+
+  @override
+  Future<Map<String, int>> deleteFiles({
+    List<String> paths = const [],
+    List<String> uris = const [],
+  }) async {
+    deletedFilePaths.addAll(paths);
+    final count = paths.length + uris.length;
+    var freed = 0;
+    fakeFiles.removeWhere((f) {
+      if (paths.contains(f.path) || uris.contains(f.uri)) {
+        freed += f.sizeBytes;
+        return true;
+      }
+      return false;
+    });
+    return {'successCount': count, 'deletedBytes': freed};
+  }
+
+  @override
+  Future<bool> openFile({
+    required String path,
+    required String uri,
+    required String mimeType,
+  }) async {
+    openedFiles.add(path.isNotEmpty ? path : uri);
+    return true;
   }
 }
 
@@ -1121,6 +1227,106 @@ void main() {
     }
 
     await tester.pumpWidget(const SizedBox());
+  });
+
+  test('StorageBreakdown and StorageMediaFile model logic', () {
+    const b = StorageBreakdown(
+      totalBytes: 100 * 1024 * 1024 * 1024,
+      freeBytes: 40 * 1024 * 1024 * 1024,
+      videosBytes: 25 * 1024 * 1024 * 1024,
+      imagesBytes: 15 * 1024 * 1024 * 1024,
+      appsBytes: 10 * 1024 * 1024 * 1024,
+      documentsBytes: 5 * 1024 * 1024 * 1024,
+      audioBytes: 3 * 1024 * 1024 * 1024,
+      otherBytes: 2 * 1024 * 1024 * 1024,
+    );
+
+    expect(b.usedBytes, 60 * 1024 * 1024 * 1024);
+    expect(b.usedRatio, closeTo(0.60, 0.01));
+    expect(b.freeRatio, closeTo(0.40, 0.01));
+    expect(b.videosRatio, closeTo(0.25, 0.01));
+
+    const video = StorageMediaFile(
+      id: 'v1',
+      name: 'movie.mp4',
+      path: '/sdcard/movie.mp4',
+      uri: 'content://video/1',
+      sizeBytes: 500 * 1024 * 1024,
+      dateModified: 1700000000000,
+      mimeType: 'video/mp4',
+      durationMs: 3665000,
+    );
+    expect(video.isVideo, isTrue);
+    expect(video.isImage, isFalse);
+    expect(video.formattedDuration, '01:01:05');
+
+    const photo = StorageMediaFile(
+      id: 'p1',
+      name: 'sunset.png',
+      path: '/sdcard/sunset.png',
+      uri: 'content://images/2',
+      sizeBytes: 4 * 1024 * 1024,
+      dateModified: 1700000000000,
+      mimeType: 'image/png',
+    );
+    expect(photo.isImage, isTrue);
+    expect(photo.isVideo, isFalse);
+    expect(photo.isDocument, isFalse);
+  });
+
+  testWidgets('StorageBreakdownChartCard renders and responds to taps', (tester) async {
+    final fakePlatform = _FakeHubPlatform();
+    final hub = HubController(platform: fakePlatform);
+    await hub.ensureLoaded();
+    await hub.refreshStorageBreakdown();
+
+    await tester.pumpWidget(_wrap(StorageBreakdownChartCard(hub: hub)));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(StorageBreakdownChartCard), findsOneWidget);
+    expect(find.text(HubStrings.forCode('en').storageBreakdownTitle), findsOneWidget);
+    expect(find.byIcon(Icons.cleaning_services_rounded), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.cleaning_services_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byType(StorageCleanerPage), findsOneWidget);
+  });
+
+  testWidgets('StorageCleanerPage loads, filters, selects and manages files', (tester) async {
+    final fakePlatform = _FakeHubPlatform();
+    final hub = HubController(platform: fakePlatform);
+    await hub.ensureLoaded();
+
+    await tester.pumpWidget(_wrap(StorageCleanerPage(hub: hub)));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(StorageCleanerPage), findsOneWidget);
+    expect(find.text('vacation_clip.mp4'), findsOneWidget);
+
+    // Switch category tabs
+    await tester.tap(find.text(HubStrings.forCode('en').categoryPhotos));
+    await tester.pumpAndSettle();
+    expect(find.text('mountain_landscape.jpg'), findsOneWidget);
+
+    // Toggle multi-select
+    await tester.tap(find.byIcon(Icons.checklist_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byType(Checkbox), findsWidgets);
+
+    // Tap on file to select
+    await tester.tap(find.text('mountain_landscape.jpg'));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.delete_forever_rounded), findsOneWidget);
+
+    // Delete selected
+    await tester.tap(find.byIcon(Icons.delete_forever_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+
+    // Confirm delete
+    await tester.tap(find.widgetWithText(FilledButton, HubStrings.forCode('en').delete));
+    await tester.pumpAndSettle();
+    expect(fakePlatform.deletedFilePaths, contains('/sdcard/DCIM/mountain_landscape.jpg'));
   });
 }
 

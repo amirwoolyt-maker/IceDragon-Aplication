@@ -27,6 +27,21 @@ abstract class HubPlatform {
   });
   Future<bool> saveSecret(String key, String value);
   Future<String> readSecret(String key);
+  Future<StorageBreakdown> scanStorageBreakdown();
+  Future<List<StorageMediaFile>> getMediaFiles({
+    required String category,
+    int minBytes = 0,
+    int limit = 100,
+  });
+  Future<Map<String, int>> deleteFiles({
+    List<String> paths = const [],
+    List<String> uris = const [],
+  });
+  Future<bool> openFile({
+    required String path,
+    required String uri,
+    required String mimeType,
+  });
 }
 
 class AndroidHubPlatform implements HubPlatform {
@@ -96,6 +111,52 @@ class AndroidHubPlatform implements HubPlatform {
   @override
   Future<String> readSecret(String key) =>
       AppHubPlatformChannel.readSecret(key);
+
+  @override
+  Future<StorageBreakdown> scanStorageBreakdown() async {
+    final map = await AppHubPlatformChannel.scanStorageBreakdown();
+    return StorageBreakdown.fromPlatformMap(map);
+  }
+
+  @override
+  Future<List<StorageMediaFile>> getMediaFiles({
+    required String category,
+    int minBytes = 0,
+    int limit = 100,
+  }) async {
+    final list = await AppHubPlatformChannel.getMediaFiles(
+      category: category,
+      minBytes: minBytes,
+      limit: limit,
+    );
+    return [for (final m in list) StorageMediaFile.fromPlatformMap(m)];
+  }
+
+  @override
+  Future<Map<String, int>> deleteFiles({
+    List<String> paths = const [],
+    List<String> uris = const [],
+  }) async {
+    final map =
+        await AppHubPlatformChannel.deleteFiles(paths: paths, uris: uris);
+    int toI(Object? v) => v is int ? v : (v is num ? v.toInt() : 0);
+    return {
+      'successCount': toI(map['successCount']),
+      'deletedBytes': toI(map['deletedBytes']),
+    };
+  }
+
+  @override
+  Future<bool> openFile({
+    required String path,
+    required String uri,
+    required String mimeType,
+  }) =>
+      AppHubPlatformChannel.openFile(
+        path: path,
+        uri: uri,
+        mimeType: mimeType,
+      );
 }
 
 /// Shared state controller for App Manager, Multi-Store Hub, Phone Assistant,
@@ -139,6 +200,8 @@ class HubController extends ChangeNotifier {
   List<UnifiedAppResult> radarApps = const [];
   AiRecommendationResult? aiResult;
   AssistantReport? assistantReport;
+  StorageBreakdown? storageBreakdown;
+  bool loadingStorage = false;
   String lastError = '';
 
   /// Direct network connection for store queries (VPN removed).
@@ -462,8 +525,55 @@ class HubController extends ChangeNotifier {
     );
     assistantReport = report;
     notifyListeners();
+    // Refresh storage breakdown in background
+    refreshStorageBreakdown().ignore();
     return report;
   }
+
+  /// Scans device storage breakdown across photos, videos, audio, documents, apps and system.
+  Future<StorageBreakdown> refreshStorageBreakdown() async {
+    loadingStorage = true;
+    notifyListeners();
+    try {
+      final res = await platform.scanStorageBreakdown();
+      storageBreakdown = res;
+      return res;
+    } catch (_) {
+      return storageBreakdown ?? const StorageBreakdown();
+    } finally {
+      loadingStorage = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetches media / large files for exploration and cleanup.
+  Future<List<StorageMediaFile>> fetchMediaFiles(
+    String category, {
+    int minBytes = 0,
+    int limit = 100,
+  }) =>
+      platform.getMediaFiles(
+        category: category,
+        minBytes: minBytes,
+        limit: limit,
+      );
+
+  /// Deletes selected media or large files from disk and MediaStore.
+  Future<Map<String, int>> deleteMediaFiles(List<StorageMediaFile> files) async {
+    if (files.isEmpty) return {'successCount': 0, 'deletedBytes': 0};
+    final paths = files.map((f) => f.path).where((p) => p.isNotEmpty).toList();
+    final uris = files.map((f) => f.uri).where((u) => u.isNotEmpty).toList();
+    final res = await platform.deleteFiles(paths: paths, uris: uris);
+    await refreshStorageBreakdown();
+    return res;
+  }
+
+  /// Opens a photo, video or document in an external player / system viewer.
+  Future<bool> openMediaFile(StorageMediaFile file) => platform.openFile(
+        path: file.path,
+        uri: file.uri,
+        mimeType: file.mimeType,
+      );
 
   /// Runs hybrid App Intelligence recommendation (#16).
   Future<void> runAiRecommendation(String query, {required bool fa}) async {

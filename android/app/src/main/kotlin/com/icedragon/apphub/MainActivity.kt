@@ -1,6 +1,7 @@
 package com.icedragon.apphub
 
 import android.app.ActivityManager
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -15,10 +16,13 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.StatFs
+import android.provider.MediaStore
 import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import android.webkit.MimeTypeMap
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -85,6 +89,24 @@ class MainActivity : FlutterActivity() {
                 "readSecret" -> {
                     val key = call.argument<String>("key") ?: ""
                     inBackground(result) { readSecret(key) }
+                }
+                "scanStorageBreakdown" -> inBackground(result) { scanStorageBreakdown() }
+                "getMediaFiles" -> {
+                    val category = call.argument<String>("category") ?: "large"
+                    val minBytes = (call.argument<Number>("minBytes"))?.toLong() ?: 0L
+                    val limit = call.argument<Int>("limit") ?: 100
+                    inBackground(result) { getMediaFiles(category, minBytes, limit) }
+                }
+                "deleteFiles" -> {
+                    val paths = call.argument<List<String>>("paths") ?: emptyList()
+                    val uris = call.argument<List<String>>("uris") ?: emptyList()
+                    inBackground(result) { deleteFiles(paths, uris) }
+                }
+                "openFile" -> {
+                    val path = call.argument<String>("path") ?: ""
+                    val uri = call.argument<String>("uri") ?: ""
+                    val mimeType = call.argument<String>("mimeType") ?: ""
+                    result.success(openFile(path, uri, mimeType))
                 }
                 else -> result.notImplemented()
             }
@@ -419,6 +441,352 @@ class MainActivity : FlutterActivity() {
             ""
         }
     }
+
+    private fun scanStorageBreakdown(): Map<String, Any> {
+        val stat = StatFs(Environment.getDataDirectory().path)
+        val totalBytes = stat.totalBytes
+        val freeBytes = stat.availableBytes
+
+        var imagesBytes = 0L
+        var imagesCount = 0
+        var videosBytes = 0L
+        var videosCount = 0
+        var audioBytes = 0L
+        var audioCount = 0
+        var docsBytes = 0L
+        var docsCount = 0
+
+        // Images
+        runCatching {
+            val proj = arrayOf(MediaStore.Images.Media.SIZE)
+            contentResolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, proj, null, null, null)?.use { cursor ->
+                val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
+                while (cursor.moveToNext()) {
+                    val s = if (sizeCol != -1) cursor.getLong(sizeCol) else 0L
+                    if (s > 0) {
+                        imagesBytes += s
+                        imagesCount++
+                    }
+                }
+            }
+        }
+
+        // Videos
+        runCatching {
+            val proj = arrayOf(MediaStore.Video.Media.SIZE)
+            contentResolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, proj, null, null, null)?.use { cursor ->
+                val sizeCol = cursor.getColumnIndex(MediaStore.Video.Media.SIZE)
+                while (cursor.moveToNext()) {
+                    val s = if (sizeCol != -1) cursor.getLong(sizeCol) else 0L
+                    if (s > 0) {
+                        videosBytes += s
+                        videosCount++
+                    }
+                }
+            }
+        }
+
+        // Audio
+        runCatching {
+            val proj = arrayOf(MediaStore.Audio.Media.SIZE)
+            contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, proj, null, null, null)?.use { cursor ->
+                val sizeCol = cursor.getColumnIndex(MediaStore.Audio.Media.SIZE)
+                while (cursor.moveToNext()) {
+                    val s = if (sizeCol != -1) cursor.getLong(sizeCol) else 0L
+                    if (s > 0) {
+                        audioBytes += s
+                        audioCount++
+                    }
+                }
+            }
+        }
+
+        // Documents & Archives from Downloads
+        runCatching {
+            val docExtensions = setOf("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "zip", "rar", "7z", "apk", "tar", "gz")
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (downloadsDir != null && downloadsDir.exists()) {
+                downloadsDir.walkTopDown().maxDepth(3).forEach { f ->
+                    if (f.isFile && f.extension.lowercase() in docExtensions) {
+                        docsBytes += f.length()
+                        docsCount++
+                    }
+                }
+            }
+        }
+
+        // Total apps size
+        var appsBytes = 0L
+        runCatching {
+            for (app in installedAppsDetailed()) {
+                val b = (app["apkBytes"] as? Long) ?: 0L
+                appsBytes += b
+            }
+        }
+
+        val accounted = freeBytes + imagesBytes + videosBytes + audioBytes + docsBytes + appsBytes
+        val otherBytes = maxOf(0L, totalBytes - accounted)
+
+        return mapOf(
+            "totalBytes" to totalBytes,
+            "freeBytes" to freeBytes,
+            "imagesBytes" to imagesBytes,
+            "imagesCount" to imagesCount,
+            "videosBytes" to videosBytes,
+            "videosCount" to videosCount,
+            "audioBytes" to audioBytes,
+            "audioCount" to audioCount,
+            "documentsBytes" to docsBytes,
+            "documentsCount" to docsCount,
+            "appsBytes" to appsBytes,
+            "otherBytes" to otherBytes,
+        )
+    }
+
+    private fun getMediaFiles(category: String, minBytes: Long, limit: Int): List<Map<String, Any>> {
+        val list = ArrayList<Map<String, Any>>()
+        val maxItems = if (limit <= 0) 100 else limit
+
+        when (category) {
+            "images" -> {
+                val proj = arrayOf(
+                    MediaStore.Images.Media._ID,
+                    MediaStore.Images.Media.DISPLAY_NAME,
+                    MediaStore.Images.Media.DATA,
+                    MediaStore.Images.Media.SIZE,
+                    MediaStore.Images.Media.DATE_MODIFIED,
+                    MediaStore.Images.Media.MIME_TYPE,
+                )
+                val sel = if (minBytes > 0) "${MediaStore.Images.Media.SIZE} >= ?" else null
+                val args = if (minBytes > 0) arrayOf(minBytes.toString()) else null
+                val sort = "${MediaStore.Images.Media.DATE_MODIFIED} DESC"
+                runCatching {
+                    contentResolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, proj, sel, args, sort)?.use { cursor ->
+                        val idCol = cursor.getColumnIndex(MediaStore.Images.Media._ID)
+                        val nameCol = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
+                        val pathCol = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+                        val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
+                        val dateCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
+                        val mimeCol = cursor.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
+                        while (cursor.moveToNext() && list.size < maxItems) {
+                            val id = if (idCol != -1) cursor.getLong(idCol) else 0L
+                            val name = if (nameCol != -1) cursor.getString(nameCol) ?: "" else ""
+                            val path = if (pathCol != -1) cursor.getString(pathCol) ?: "" else ""
+                            val size = if (sizeCol != -1) cursor.getLong(sizeCol) else 0L
+                            val date = if (dateCol != -1) cursor.getLong(dateCol) * 1000L else 0L
+                            val mime = if (mimeCol != -1) cursor.getString(mimeCol) ?: "image/jpeg" else "image/jpeg"
+                            val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id).toString()
+                            list.add(
+                                mapOf(
+                                    "id" to id.toString(),
+                                    "name" to (name.ifEmpty { File(path).name }),
+                                    "path" to path,
+                                    "uri" to uri,
+                                    "sizeBytes" to size,
+                                    "dateModified" to date,
+                                    "mimeType" to mime,
+                                    "durationMs" to 0L,
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+            "videos" -> {
+                val proj = arrayOf(
+                    MediaStore.Video.Media._ID,
+                    MediaStore.Video.Media.DISPLAY_NAME,
+                    MediaStore.Video.Media.DATA,
+                    MediaStore.Video.Media.SIZE,
+                    MediaStore.Video.Media.DATE_MODIFIED,
+                    MediaStore.Video.Media.MIME_TYPE,
+                    MediaStore.Video.Media.DURATION,
+                )
+                val sel = if (minBytes > 0) "${MediaStore.Video.Media.SIZE} >= ?" else null
+                val args = if (minBytes > 0) arrayOf(minBytes.toString()) else null
+                val sort = "${MediaStore.Video.Media.DATE_MODIFIED} DESC"
+                runCatching {
+                    contentResolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, proj, sel, args, sort)?.use { cursor ->
+                        val idCol = cursor.getColumnIndex(MediaStore.Video.Media._ID)
+                        val nameCol = cursor.getColumnIndex(MediaStore.Video.Media.DISPLAY_NAME)
+                        val pathCol = cursor.getColumnIndex(MediaStore.Video.Media.DATA)
+                        val sizeCol = cursor.getColumnIndex(MediaStore.Video.Media.SIZE)
+                        val dateCol = cursor.getColumnIndex(MediaStore.Video.Media.DATE_MODIFIED)
+                        val mimeCol = cursor.getColumnIndex(MediaStore.Video.Media.MIME_TYPE)
+                        val durCol = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
+                        while (cursor.moveToNext() && list.size < maxItems) {
+                            val id = if (idCol != -1) cursor.getLong(idCol) else 0L
+                            val name = if (nameCol != -1) cursor.getString(nameCol) ?: "" else ""
+                            val path = if (pathCol != -1) cursor.getString(pathCol) ?: "" else ""
+                            val size = if (sizeCol != -1) cursor.getLong(sizeCol) else 0L
+                            val date = if (dateCol != -1) cursor.getLong(dateCol) * 1000L else 0L
+                            val mime = if (mimeCol != -1) cursor.getString(mimeCol) ?: "video/mp4" else "video/mp4"
+                            val dur = if (durCol != -1) cursor.getLong(durCol) else 0L
+                            val uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id).toString()
+                            list.add(
+                                mapOf(
+                                    "id" to id.toString(),
+                                    "name" to (name.ifEmpty { File(path).name }),
+                                    "path" to path,
+                                    "uri" to uri,
+                                    "sizeBytes" to size,
+                                    "dateModified" to date,
+                                    "mimeType" to mime,
+                                    "durationMs" to dur,
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+            "audio" -> {
+                val proj = arrayOf(
+                    MediaStore.Audio.Media._ID,
+                    MediaStore.Audio.Media.DISPLAY_NAME,
+                    MediaStore.Audio.Media.DATA,
+                    MediaStore.Audio.Media.SIZE,
+                    MediaStore.Audio.Media.DATE_MODIFIED,
+                    MediaStore.Audio.Media.MIME_TYPE,
+                    MediaStore.Audio.Media.DURATION,
+                )
+                val sel = if (minBytes > 0) "${MediaStore.Audio.Media.SIZE} >= ?" else null
+                val args = if (minBytes > 0) arrayOf(minBytes.toString()) else null
+                val sort = "${MediaStore.Audio.Media.DATE_MODIFIED} DESC"
+                runCatching {
+                    contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, proj, sel, args, sort)?.use { cursor ->
+                        val idCol = cursor.getColumnIndex(MediaStore.Audio.Media._ID)
+                        val nameCol = cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
+                        val pathCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                        val sizeCol = cursor.getColumnIndex(MediaStore.Audio.Media.SIZE)
+                        val dateCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED)
+                        val mimeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
+                        val durCol = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                        while (cursor.moveToNext() && list.size < maxItems) {
+                            val id = if (idCol != -1) cursor.getLong(idCol) else 0L
+                            val name = if (nameCol != -1) cursor.getString(nameCol) ?: "" else ""
+                            val path = if (pathCol != -1) cursor.getString(pathCol) ?: "" else ""
+                            val size = if (sizeCol != -1) cursor.getLong(sizeCol) else 0L
+                            val date = if (dateCol != -1) cursor.getLong(dateCol) * 1000L else 0L
+                            val mime = if (mimeCol != -1) cursor.getString(mimeCol) ?: "audio/mpeg" else "audio/mpeg"
+                            val dur = if (durCol != -1) cursor.getLong(durCol) else 0L
+                            val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString()
+                            list.add(
+                                mapOf(
+                                    "id" to id.toString(),
+                                    "name" to (name.ifEmpty { File(path).name }),
+                                    "path" to path,
+                                    "uri" to uri,
+                                    "sizeBytes" to size,
+                                    "dateModified" to date,
+                                    "mimeType" to mime,
+                                    "durationMs" to dur,
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+            "documents" -> {
+                val docExtensions = setOf("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "zip", "rar", "7z", "apk", "tar", "gz")
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (downloadsDir != null && downloadsDir.exists()) {
+                    downloadsDir.walkTopDown().maxDepth(3).forEach { f ->
+                        if (f.isFile && f.extension.lowercase() in docExtensions && list.size < maxItems) {
+                            val size = f.length()
+                            if (minBytes <= 0 || size >= minBytes) {
+                                val ext = f.extension.lowercase()
+                                val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
+                                list.add(
+                                    mapOf(
+                                        "id" to f.absolutePath.hashCode().toString(),
+                                        "name" to f.name,
+                                        "path" to f.absolutePath,
+                                        "uri" to Uri.fromFile(f).toString(),
+                                        "sizeBytes" to size,
+                                        "dateModified" to f.lastModified(),
+                                        "mimeType" to mime,
+                                        "durationMs" to 0L,
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            "large" -> {
+                val threshold = if (minBytes > 0) minBytes else (20L * 1024L * 1024L) // 20 MB default
+                val combined = ArrayList<Map<String, Any>>()
+                combined.addAll(getMediaFiles("videos", threshold, maxItems))
+                combined.addAll(getMediaFiles("images", threshold, maxItems))
+                combined.addAll(getMediaFiles("documents", threshold, maxItems))
+                combined.sortByDescending { (it["sizeBytes"] as? Long) ?: 0L }
+                return combined.take(maxItems)
+            }
+        }
+        return list
+    }
+
+    private fun deleteFiles(paths: List<String>, uris: List<String>): Map<String, Any> {
+        var count = 0
+        var bytesFreed = 0L
+
+        for (path in paths) {
+            if (path.isNotBlank()) {
+                val f = File(path)
+                if (f.exists()) {
+                    val len = f.length()
+                    if (f.delete()) {
+                        count++
+                        bytesFreed += len
+                    }
+                }
+            }
+        }
+
+        for (u in uris) {
+            if (u.isNotBlank() && u.startsWith("content://")) {
+                runCatching {
+                    val rows = contentResolver.delete(Uri.parse(u), null, null)
+                    if (rows > 0) {
+                        count++
+                    }
+                }
+            }
+        }
+
+        return mapOf(
+            "successCount" to count,
+            "deletedBytes" to bytesFreed,
+        )
+    }
+
+    private fun openFile(path: String, uriStr: String, mimeType: String): Boolean = runCatching {
+        val targetUri = if (path.isNotBlank() && File(path).exists()) {
+            val f = File(path)
+            runCatching {
+                FileProvider.getUriForFile(this, "$packageName.fileprovider", f)
+            }.getOrElse {
+                Uri.fromFile(f)
+            }
+        } else if (uriStr.isNotBlank()) {
+            Uri.parse(uriStr)
+        } else {
+            return false
+        }
+
+        val effectiveMime = mimeType.ifBlank {
+            val ext = MimeTypeMap.getFileExtensionFromUrl(targetUri.toString())
+            MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.lowercase()) ?: "*/*"
+        }
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(targetUri, effectiveMime)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(intent)
+        true
+    }.getOrDefault(false)
 
     @Deprecated("Uninstall activity result")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
