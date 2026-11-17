@@ -254,29 +254,38 @@ class _HubSettingsPageState extends State<HubSettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  // ignore: deprecated_member_use
                   RadioListTile<DownloadLocationType>(
                     contentPadding: EdgeInsets.zero,
                     title: Text(s.downloadLocationRecommended),
                     value: DownloadLocationType.recommended,
+                    // ignore: deprecated_member_use
                     groupValue: hub.repo.downloadLocation,
+                    // ignore: deprecated_member_use
                     onChanged: (v) {
                       if (v != null) hub.setDownloadLocation(v);
                     },
                   ),
+                  // ignore: deprecated_member_use
                   RadioListTile<DownloadLocationType>(
                     contentPadding: EdgeInsets.zero,
                     title: Text(s.downloadLocationPublic),
                     value: DownloadLocationType.publicDownloads,
+                    // ignore: deprecated_member_use
                     groupValue: hub.repo.downloadLocation,
+                    // ignore: deprecated_member_use
                     onChanged: (v) {
                       if (v != null) hub.setDownloadLocation(v);
                     },
                   ),
+                  // ignore: deprecated_member_use
                   RadioListTile<DownloadLocationType>(
                     contentPadding: EdgeInsets.zero,
                     title: Text(s.downloadLocationCustom),
                     value: DownloadLocationType.custom,
+                    // ignore: deprecated_member_use
                     groupValue: hub.repo.downloadLocation,
+                    // ignore: deprecated_member_use
                     onChanged: (v) {
                       if (v != null) hub.setDownloadLocation(v);
                     },

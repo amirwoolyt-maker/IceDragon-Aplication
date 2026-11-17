@@ -364,10 +364,8 @@ class _IceSpeedBoostDialogState extends State<IceSpeedBoostDialog>
                     ),
                   ),
                   AppIconBadge(
-                    package: widget.app.package,
-                    hub: widget.hub,
+                    iconFuture: widget.hub.appIcon(widget.app.package),
                     size: 64,
-                    radius: 18,
                   ),
                 ],
               ),
