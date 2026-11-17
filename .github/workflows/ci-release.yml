@@ -43,15 +43,17 @@ jobs:
 
       - name: Flutter analyze
         run: |
-          if ! flutter analyze --no-pub > analyze_output.log 2>&1; then
-            cat analyze_output.log
-            echo "### ❌ Flutter analyze failed" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            cat analyze_output.log >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          set -e
+          flutter analyze --no-pub > analyze_output.txt 2>&1 || true
+          cat analyze_output.txt
+          while IFS= read -r line; do
+            if echo "$line" | grep -qE "(error|warning|info) •"; then
+              echo "::error title=Flutter Analyzer::$line"
+            fi
+          done < analyze_output.txt
+          if grep -qE "(error|warning|info) •" analyze_output.txt; then
             exit 1
           fi
-          cat analyze_output.log
 
       - name: Flutter test
         run: flutter test --no-pub --reporter expanded
