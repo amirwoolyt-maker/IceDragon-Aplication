@@ -1018,6 +1018,7 @@ class UnifiedAppResult {
     StoreId.googlePlay,
     StoreId.bazaar,
     StoreId.myket,
+    StoreId.appStore,
     StoreId.fdroid,
   ];
 

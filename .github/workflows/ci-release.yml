@@ -42,7 +42,16 @@ jobs:
         run: flutter pub get
 
       - name: Flutter analyze
-        run: flutter analyze --no-pub
+        run: |
+          if ! flutter analyze --no-pub > analyze_output.log 2>&1; then
+            cat analyze_output.log
+            echo "### ❌ Flutter analyze failed" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat analyze_output.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          cat analyze_output.log
 
       - name: Flutter test
         run: flutter test --no-pub --reporter expanded

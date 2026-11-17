@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../theme/hub_theme.dart';
@@ -31,15 +33,15 @@ class _AppsManagerPageState extends State<AppsManagerPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
+    unawaited(
       widget.hub.ensureLoaded().then((_) {
         if (mounted) {
           setState(() {
             _sortMode = widget.hub.repo.defaultSortMode;
           });
         }
-      });
-    });
+      }),
+    );
   }
 
   @override

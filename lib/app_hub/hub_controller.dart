@@ -98,20 +98,6 @@ class AndroidHubPlatform implements HubPlatform {
       AppHubPlatformChannel.readSecret(key);
 }
 
-/// Validates a `host:port` HTTP/SOCKS proxy string such as `127.0.0.1:10808`.
-bool isValidProxyHostPort(String raw) {
-  final t = raw.trim();
-  if (t.isEmpty) return false;
-  final idx = t.lastIndexOf(':');
-  if (idx <= 0 || idx >= t.length - 1) return false;
-  final host = t.substring(0, idx).trim();
-  final port = int.tryParse(t.substring(idx + 1).trim());
-  if (host.isEmpty || host.contains(RegExp(r'\s')) || port == null) {
-    return false;
-  }
-  return port > 0 && port <= 65535;
-}
-
 /// Shared state controller for App Manager, Multi-Store Hub, Phone Assistant,
 /// Collections, Central Updates, and App Intelligence.
 class HubController extends ChangeNotifier {

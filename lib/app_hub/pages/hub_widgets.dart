@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -264,7 +265,7 @@ class _IceSpeedBoostDialogState extends State<IceSpeedBoostDialog>
         }
       });
 
-    _executeBoostAndLaunch();
+    unawaited(_executeBoostAndLaunch());
   }
 
   Future<void> _executeBoostAndLaunch() async {

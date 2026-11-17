@@ -534,6 +534,8 @@ class _AppProfilePageState extends State<AppProfilePage> {
                               'https://cafebazaar.ir/app/${Uri.encodeComponent(widget.packageName)}',
                             StoreId.myket =>
                               'https://myket.ir/app/${Uri.encodeComponent(widget.packageName)}',
+                            StoreId.appStore =>
+                              'https://apps.apple.com/app/id${Uri.encodeComponent(widget.packageName)}',
                             StoreId.fdroid =>
                               'https://f-droid.org/packages/${Uri.encodeComponent(widget.packageName)}/',
                           },

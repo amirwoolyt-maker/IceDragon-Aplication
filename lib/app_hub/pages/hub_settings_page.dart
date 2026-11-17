@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -37,18 +38,20 @@ class _HubSettingsPageState extends State<HubSettingsPage> {
     _customPathCtrl = TextEditingController(
       text: widget.hub.repo.customDownloadPath,
     );
-    Future.microtask(() async {
-      await widget.hub.ensureLoaded();
-      if (!mounted) return;
-      setState(() {
-        if (_keyCtrl.text != widget.hub.repo.geminiApiKey) {
-          _keyCtrl.text = widget.hub.repo.geminiApiKey;
-        }
-        if (_customPathCtrl.text != widget.hub.repo.customDownloadPath) {
-          _customPathCtrl.text = widget.hub.repo.customDownloadPath;
-        }
-      });
-    });
+    unawaited(
+      Future.microtask(() async {
+        await widget.hub.ensureLoaded();
+        if (!mounted) return;
+        setState(() {
+          if (_keyCtrl.text != widget.hub.repo.geminiApiKey) {
+            _keyCtrl.text = widget.hub.repo.geminiApiKey;
+          }
+          if (_customPathCtrl.text != widget.hub.repo.customDownloadPath) {
+            _customPathCtrl.text = widget.hub.repo.customDownloadPath;
+          }
+        });
+      }),
+    );
   }
 
   @override
