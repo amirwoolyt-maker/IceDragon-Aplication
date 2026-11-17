@@ -6,7 +6,6 @@ import '../../theme/hub_theme.dart';
 import '../hub_controller.dart';
 import '../hub_models.dart';
 import '../hub_strings.dart';
-import 'hub_widgets.dart';
 
 /// Categories of files manageable inside [StorageCleanerPage].
 enum StorageViewCategory { large, videos, photos, documents, audio }
@@ -604,7 +603,7 @@ class _StorageCleanerPageState extends State<StorageCleanerPage> {
                       color: DarkGlassPalette.ruby.withValues(alpha: 0.34),
                     ),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.play_circle_fill_rounded,
                     color: DarkGlassPalette.ruby,
                     size: 28,

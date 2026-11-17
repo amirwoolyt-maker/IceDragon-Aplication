@@ -12,6 +12,7 @@ abstract final class DarkGlassPalette {
   static const mint = Color(0xFF00F5A0);
   static const amber = Color(0xFFFFB800);
   static const coral = Color(0xFFFF477E);
+  static const ruby = Color(0xFFF43F5E);
   static const blue = Color(0xFF3B82F6);
 
   static const text = Colors.white;
