@@ -125,45 +125,10 @@ jobs:
 
       - name: Require & verify release keystore
         id: keystore
-        shell: bash
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        run: |
-          set -eo pipefail
-          KEYSTORE="${KEYSTORE:-}"
-          PASSWORD="${PASSWORD:-}"
-          alias="release"
-          storepass="$PASSWORD"
-
-          if [ -n "$KEYSTORE" ] && [ -n "$PASSWORD" ]; then
-            echo "Using repository secret release keystore..."
-            printf '%s' "$KEYSTORE" | tr -d '\r\n ' | base64 -d > android/release.jks
-            if ! cert_info="$(keytool -list -v -keystore android/release.jks -storepass "$storepass" 2>&1)"; then
-              echo "::error title=Keystore Error::keytool failed to read provided keystore: $cert_info"
-              exit 1
-            fi
-            detected_alias="$(printf '%s\n' "$cert_info" | sed -nE 's/.*Alias name:[[:space:]]*(.+)/\1/p' | head -n 1 | tr -d '\r ')"
-            if [ -n "$detected_alias" ]; then
-              alias="$detected_alias"
-            fi
-          else
-            echo "::warning title=Keystore::Release keystore secret not found. Creating test signing keystore for CI testing APKs..."
-            storepass="IceDragonHubTest2026!"
-            alias="release"
-            keytool -genkeypair -v -keystore android/release.jks -alias "$alias" -keyalg RSA -keysize 2048 -validity 10000 -storepass "$storepass" -keypass "$storepass" -dname "CN=IceDragon AppHub Test, OU=Dev, O=IceDragon, C=IR"
-            cert_info="$(keytool -list -v -keystore android/release.jks -storepass "$storepass" -alias "$alias")"
-          fi
-
-          expected_sha256="$(printf '%s\n' "$cert_info" | sed -nE 's/.*SHA-?256:[[:space:]]*([0-9A-Fa-f:]+).*/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
-          if [ "${#expected_sha256}" -ne 64 ]; then
-            echo "::error title=Keystore Error::Failed to extract SHA-256 certificate fingerprint from keystore (got: '${expected_sha256:-empty}')."
-            exit 1
-          fi
-
-          printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$storepass" "$alias" "$storepass" > android/key.properties
-          echo "sha256=$expected_sha256" >> "$GITHUB_OUTPUT"
-          echo "Signing with alias: $alias, SHA-256: $expected_sha256"
+        run: python3 -u android/ci_keystore.py
 
       - name: Build release APKs
         run: |
